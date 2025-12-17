@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ListenFlow - 完美版</title>
+    <title>ListenFlow - v2.7</title>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.1.5/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
@@ -41,11 +41,8 @@
             margin-top: 40px; margin-bottom: 40px;
         }
         
-        /* 高亮当前章节标题 */
         h3.current-reading {
-            color: #d35400;
-            border-left: 4px solid #d35400;
-            padding-left: 10px;
+            color: #d35400; border-left: 4px solid #d35400; padding-left: 10px;
         }
         
         p { margin-bottom: 24px; text-align: justify; }
@@ -100,13 +97,13 @@
 
     <div class="header">
         <select id="toc-select" disabled>
-            <option>⏳ 引擎启动中...</option>
+            <option>⏳ 正在解析目录...</option>
         </select>
     </div>
 
     <div class="upload-container" id="upload-area">
-        <h3>🚀 ListenFlow v2.6</h3>
-        <p>完美版 (目录修复+自动记忆)</p>
+        <h3>🚀 ListenFlow v2.7</h3>
+        <p>目录强力修复版</p>
         
         <button id="resume-btn">🔄 检测到上次读的书，点此继续</button>
 
@@ -250,7 +247,6 @@
                     let paragraphs = text.split(/\n+/);
                     let lastText = "";
                     let chapterDiv = document.createElement('div');
-                    
                     chapterDiv.id = 'chapter-container-' + i;
 
                     if (i > startIndex) { 
@@ -298,7 +294,6 @@
                     var targetEl = document.getElementById('chapter-container-' + targetScrollIndex);
                     if (targetEl) {
                         targetEl.scrollIntoView({ behavior: 'auto', block: 'start' });
-                        // 稍微向上偏一点，避免标题被顶栏挡住
                         window.scrollBy(0, -70); 
                     }
                 }, 600);
@@ -307,31 +302,60 @@
             }
         }
 
-        // ✅ 核心修复：只比对文件名，忽略路径差异
-        function getFilename(url) {
-            if (!url) return "";
-            return url.split('/').pop().split('#')[0];
-        }
-
+        // ✅ v2.7 修复：使用 epub.js 原生 API 查找章节
         function loadChapterByHref(href) {
-            var targetIndex = -1;
-            var targetFilename = getFilename(href);
+            console.log("尝试跳转链接:", href);
+            
+            // 1. 尝试使用官方 API 查找 (最准确)
+            var spineItem = book.spine.get(href);
+            
+            if (spineItem) {
+                console.log("官方 API 命中:", spineItem.index);
+                jumpToSpineIndex(spineItem.index);
+            } else {
+                // 2. 如果官方 API 失败，尝试暴力比对文件名
+                var targetIndex = -1;
+                // 去掉 #后面的东西，并解码 (处理 %20 空格等)
+                var cleanHref = decodeURIComponent(href.split('#')[0]);
+                var targetFilename = cleanHref.split('/').pop();
 
-            // 遍历所有章节，找文件名一样的
-            for(var i=0; i<spine.length; i++) {
-                if(getFilename(spine[i].href) === targetFilename) {
-                    targetIndex = i; 
-                    break;
+                console.log("尝试比对文件名:", targetFilename);
+
+                for(var i=0; i<spine.length; i++) {
+                    var itemHref = decodeURIComponent(spine[i].href);
+                    var itemFilename = itemHref.split('/').pop();
+                    if(itemFilename === targetFilename) {
+                        targetIndex = i; 
+                        break;
+                    }
+                }
+                
+                if(targetIndex !== -1) {
+                    jumpToSpineIndex(targetIndex);
+                } else {
+                    alert("跳转失败：无法定位该章节。\n(Href: " + href + ")");
                 }
             }
+        }
+
+        // 统一跳转逻辑
+        function jumpToSpineIndex(index) {
+            localStorage.setItem('exactChapterIndex', index);
+            var batchStart = Math.floor(index / BATCH_SIZE) * BATCH_SIZE;
             
-            if(targetIndex !== -1) {
-                // 保存意图
-                localStorage.setItem('exactChapterIndex', targetIndex);
-                var batchStart = Math.floor(targetIndex / BATCH_SIZE) * BATCH_SIZE;
-                renderBatch(batchStart, targetIndex);
+            // 如果已经在当前这组里了，直接滚过去
+            if (currentStartIndex === batchStart) {
+                var targetEl = document.getElementById('chapter-container-' + index);
+                if (targetEl) {
+                    targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    window.scrollBy(0, -70);
+                } else {
+                    // 元素还没渲染出来（极其罕见），重绘
+                    renderBatch(batchStart, index);
+                }
             } else {
-                alert("未找到该章节，可能是格式特殊");
+                // 不在当前组，重新加载那组
+                renderBatch(batchStart, index);
             }
         }
 
