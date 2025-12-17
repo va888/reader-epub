@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>va的纯净版epub阅读器</title>
+    <title>纯净版epub阅读器</title>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.1.5/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <style>
@@ -13,7 +13,7 @@
             padding: 0;
             background-color: #f7f7f7;
             color: #333;
-            padding-bottom: 120px; /* 底部留白给大按钮 */
+            padding-bottom: 120px;
             padding-top: 60px;
         }
 
@@ -49,22 +49,24 @@
             white-space: pre-wrap;
         }
         
-        /* 章节标题 */
-        h3 { 
-            color: #0078D4; 
-            margin-top: 60px; 
-            margin-bottom: 30px; 
-            padding-bottom: 10px;
-            border-bottom: 2px solid #eee;
-            font-size: 22px;
+        /* 章节之间的分割线 (替代原本丑陋的标题) */
+        .chapter-divider {
+            border: 0;
+            height: 1px;
+            background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0));
+            margin-top: 40px;
+            margin-bottom: 40px;
         }
         
         p { margin-bottom: 24px; text-align: justify; }
 
+        /* 标题样式 (书本自带的标题) */
+        h1, h2, h3, h4 { color: #000; font-weight: bold; margin-bottom: 20px; }
+
         .footer {
             position: fixed;
             bottom: 0; left: 0; right: 0;
-            height: 100px; /* 更高的底部栏 */
+            height: 100px;
             background: #fff;
             box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
             display: flex;
@@ -83,7 +85,7 @@
 
         .nav-btn {
             width: 45%;
-            height: 60px; /* 更大的按钮 */
+            height: 60px;
             border: none;
             border-radius: 12px;
             font-size: 18px;
@@ -97,7 +99,6 @@
         
         .nav-btn:disabled { opacity: 0.5; background-color: #ccc; }
 
-        /* 状态标签 */
         .status-tag {
             font-size: 12px;
             color: #999;
@@ -129,33 +130,33 @@
 
     <div class="header">
         <select id="toc-select" disabled>
-            <option>⏳ 正在准备引擎...</option>
+            <option>⏳ 正在加载引擎...</option>
         </select>
     </div>
 
     <div class="upload-container" id="upload-area">
-        <h3>va的纯净版epub阅读器</h3>
-        <p>长续航模式 (一次加载20章)</p>
+        <h3>纯净版epub阅读器</h3>
+        <p>纯净版 (修复卡顿 & 去除杂标)</p>
         <input type="file" id="file-input" accept=".epub" style="font-size: 16px;">
     </div>
 
     <div id="viewer"></div>
 
     <div class="footer">
-        <div class="status-tag" id="page-info">当前: 第 0 - 0 章</div>
+        <div class="status-tag" id="page-info">准备就绪</div>
         <div class="control-group">
             <button id="prev-btn" class="nav-btn" disabled>⏮ 上一组</button>
             <button id="next-btn" class="nav-btn" disabled>下一组 (20章) ⏭</button>
         </div>
     </div>
 
-    <div id="loading">正在拼命加载内容...</div>
+    <div id="loading">正在加载内容...</div>
 
     <script>
         var book = null;
         var spine = [];
         var currentStartIndex = 0;
-        var BATCH_SIZE = 20; // 核心参数：一次加载20章，你可以自己改这个数字
+        var BATCH_SIZE = 20; // 一次加载20章
 
         function showLoading(show) {
             document.getElementById('loading').style.display = show ? 'block' : 'none';
@@ -175,7 +176,7 @@
                 // 加载目录
                 book.loaded.navigation.then(function(toc) {
                     var select = document.getElementById('toc-select');
-                    select.innerHTML = '<option value="-1">📖 跳转到...</option>';
+                    select.innerHTML = '<option value="-1">📖 跳转到章节...</option>';
                     var flatten = function(items) {
                         items.forEach(function(item) {
                             var option = document.createElement('option');
@@ -199,59 +200,66 @@
                     document.getElementById('upload-area').style.display = 'none';
                     document.getElementById('prev-btn').disabled = false;
                     document.getElementById('next-btn').disabled = false;
-                    
-                    // 开始加载第一组
                     renderBatch(currentStartIndex);
                 });
             };
             reader.readAsArrayBuffer(file);
         });
 
-        // 核心：批量渲染函数
         async function renderBatch(startIndex) {
             if (startIndex < 0 || startIndex >= spine.length) return;
             
             showLoading(true);
             var viewer = document.getElementById('viewer');
-            viewer.innerHTML = ''; // 清空之前的内容
+            viewer.innerHTML = ''; 
 
             var endIndex = Math.min(startIndex + BATCH_SIZE, spine.length);
             currentStartIndex = startIndex;
 
-            // 更新底部状态文字
             document.getElementById('page-info').innerText = 
-                `当前加载: 第 ${startIndex + 1} 章 - 第 ${endIndex} 章 (共 ${spine.length} 章)`;
+                `当前: 第 ${startIndex + 1} - ${endIndex} 章 (共 ${spine.length} 章)`;
 
-            // 循环加载这一组的每一章
             for (let i = startIndex; i < endIndex; i++) {
                 try {
                     let section = spine.get(i);
                     let doc = await section.load(book.load.bind(book));
                     
-                    // 提取并清洗文字
                     let text = doc.innerText || doc.textContent;
                     let paragraphs = text.split(/\n+/);
                     let lastText = "";
                     
-                    // 每一章加一个大标题，方便听觉区分
                     let chapterDiv = document.createElement('div');
-                    let chapterTitle = document.createElement('h3');
-                    chapterTitle.innerText = `>>> 第 ${i + 1} 部分 <<<`;
-                    chapterDiv.appendChild(chapterTitle);
+                    
+                    // ✅ 核心修改：删除了 text header，改用 hr 分割线
+                    if (i > startIndex) { 
+                        // 如果不是当前这组的第一章，就在前面加个分割线
+                        let hr = document.createElement('hr');
+                        hr.className = 'chapter-divider';
+                        chapterDiv.appendChild(hr);
+                    }
 
                     paragraphs.forEach(function(pText) {
                         pText = pText.trim();
+                        // 智能去重：如果是重复标题则跳过
                         if (pText.length > 0 && pText !== lastText) {
-                            let p = document.createElement('p');
-                            p.innerText = pText;
-                            chapterDiv.appendChild(p);
+                            
+                            // 简单的标题检测 (短文本且包含关键字)
+                            if (pText.length < 40 && (pText.includes("第") || pText.includes("章") || pText.includes("Chapter"))) {
+                                let h3 = document.createElement('h3');
+                                h3.innerText = pText;
+                                chapterDiv.appendChild(h3);
+                            } else {
+                                let p = document.createElement('p');
+                                p.innerText = pText;
+                                chapterDiv.appendChild(p);
+                            }
                             lastText = pText;
                         }
                     });
                     
                     viewer.appendChild(chapterDiv);
                 } catch (err) {
-                    console.error("章节加载失败", err);
+                    console.error("Error", err);
                 }
             }
 
@@ -259,7 +267,6 @@
             window.scrollTo(0, 0);
         }
 
-        // 根据目录跳转（会跳转到该章节所属的那一组）
         function loadChapterByHref(href) {
             var targetIndex = -1;
             var cleanHref = href.split('#')[0]; 
@@ -270,7 +277,6 @@
                 }
             }
             if(targetIndex !== -1) {
-                // 比如点第25章，BatchSize是20，那应该加载第20-40章这一组
                 var batchStart = Math.floor(targetIndex / BATCH_SIZE) * BATCH_SIZE;
                 renderBatch(batchStart);
             }
