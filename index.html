@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ListenFlow - 记忆版</title>
+    <title>ListenFlow - 完美版</title>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.1.5/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
@@ -41,6 +41,13 @@
             margin-top: 40px; margin-bottom: 40px;
         }
         
+        /* 高亮当前章节标题 */
+        h3.current-reading {
+            color: #d35400;
+            border-left: 4px solid #d35400;
+            padding-left: 10px;
+        }
+        
         p { margin-bottom: 24px; text-align: justify; }
         h1, h2, h3, h4 { color: #000; font-weight: bold; margin-bottom: 20px; }
 
@@ -74,11 +81,11 @@
             margin-top: 20px; border-radius: 10px;
         }
 
-        /* 恢复按钮 - 只有检测到上次有书时才显示 */
         #resume-btn {
             display: none; width: 100%; padding: 15px; margin-bottom: 15px;
             background: #28a745; color: white; border: none; border-radius: 8px;
             font-size: 16px; cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         
         #loading {
@@ -93,17 +100,17 @@
 
     <div class="header">
         <select id="toc-select" disabled>
-            <option>⏳ 引擎准备中...</option>
+            <option>⏳ 引擎启动中...</option>
         </select>
     </div>
 
     <div class="upload-container" id="upload-area">
-        <h3>💾 ListenFlow v2.4</h3>
-        <p>自动记忆版 (防后台刷新)</p>
+        <h3>🚀 ListenFlow v2.6</h3>
+        <p>完美版 (目录修复+自动记忆)</p>
         
         <button id="resume-btn">🔄 检测到上次读的书，点此继续</button>
 
-        <p style="font-size:12px; color:#666;">或选择新书：</p>
+        <p style="font-size:12px; color:#666; margin-top:15px;">或选择新书：</p>
         <input type="file" id="file-input" accept=".epub" style="font-size: 16px;">
     </div>
 
@@ -124,14 +131,11 @@
         var spine = [];
         var currentStartIndex = 0;
         var BATCH_SIZE = 20;
+        var observer = null;
 
-        // 初始化存储库
         localforage.config({ name: 'listenflow_db' });
 
-        // --- 页面加载时：自动检查有没有存过的书 ---
-        window.onload = function() {
-            checkSavedBook();
-        };
+        window.onload = function() { checkSavedBook(); };
 
         function showLoading(show, text) {
             var el = document.getElementById('loading');
@@ -139,41 +143,32 @@
             el.style.display = show ? 'block' : 'none';
         }
 
-        // 检查数据库
         async function checkSavedBook() {
             try {
                 var savedBook = await localforage.getItem('currentBook');
                 if (savedBook) {
                     var btn = document.getElementById('resume-btn');
-                    btn.style.display = 'block';
-                    btn.innerText = "🔄 继续阅读 (上次进度)";
+                    var lastChapterIndex = localStorage.getItem('exactChapterIndex');
+                    var infoText = lastChapterIndex ? ` (上次读到第 ${parseInt(lastChapterIndex)+1} 章)` : "";
                     
-                    // 自动加载逻辑：如果用户点了按钮
-                    btn.onclick = function() {
-                        loadBookEngine(savedBook, true); // true 表示是恢复模式
-                    };
+                    btn.innerText = "🔄 继续阅读" + infoText;
+                    btn.style.display = 'block';
+                    btn.onclick = function() { loadBookEngine(savedBook, true); };
                 }
-            } catch (err) {
-                console.log("存储读取失败", err);
-            }
+            } catch (err) { console.log("存储读取失败", err); }
         }
 
         document.getElementById('file-input').addEventListener('change', function(e) {
             var file = e.target.files[0];
             if (!file) return;
-            
-            // 保存文件到数据库 (关键一步！)
             localforage.setItem('currentBook', file).then(function() {
-                // 清除旧的进度
-                localStorage.removeItem('lastReadIndex');
+                localStorage.removeItem('exactChapterIndex'); 
                 loadBookEngine(file, false);
             });
         });
 
-        // 核心加载引擎
         function loadBookEngine(bookData, isResume) {
             showLoading(true, "正在恢复书籍...");
-            
             var reader = new FileReader();
             reader.onload = function(e) {
                 var arrayBuffer = e.target.result;
@@ -181,7 +176,7 @@
 
                 book.loaded.navigation.then(function(toc) {
                     var select = document.getElementById('toc-select');
-                    select.innerHTML = '<option value="-1">📖 目录...</option>';
+                    select.innerHTML = '<option value="-1">📖 点击跳转章节...</option>';
                     var flatten = function(items) {
                         items.forEach(function(item) {
                             var option = document.createElement('option');
@@ -204,36 +199,48 @@
                     document.getElementById('prev-btn').disabled = false;
                     document.getElementById('next-btn').disabled = false;
                     
-                    // 决定从哪里开始
                     var startIndex = 0;
+                    var exactIndex = null;
+
                     if (isResume) {
-                        var savedIndex = localStorage.getItem('lastReadIndex');
-                        if (savedIndex) {
-                            startIndex = parseInt(savedIndex);
+                        var savedExact = localStorage.getItem('exactChapterIndex');
+                        if (savedExact) {
+                            exactIndex = parseInt(savedExact);
+                            startIndex = Math.floor(exactIndex / BATCH_SIZE) * BATCH_SIZE;
                         }
                     }
-                    
-                    renderBatch(startIndex);
+                    renderBatch(startIndex, exactIndex);
                 });
             };
             reader.readAsArrayBuffer(bookData);
         }
 
-        async function renderBatch(startIndex) {
+        async function renderBatch(startIndex, targetScrollIndex = null) {
             if (startIndex < 0 || startIndex >= spine.length) return;
             
             showLoading(true, "正在加载文本...");
             var viewer = document.getElementById('viewer');
+            if (observer) observer.disconnect();
             viewer.innerHTML = ''; 
 
             var endIndex = Math.min(startIndex + BATCH_SIZE, spine.length);
             currentStartIndex = startIndex;
 
-            // --- 记忆关键点：每次加载新章节，都记录下来 ---
-            localStorage.setItem('lastReadIndex', currentStartIndex);
-
             document.getElementById('page-info').innerText = 
                 `当前: 第 ${startIndex + 1} - ${endIndex} 章 (共 ${spine.length} 章)`;
+
+            observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        var idx = entry.target.getAttribute('data-index');
+                        if (idx) {
+                            localStorage.setItem('exactChapterIndex', idx);
+                            document.querySelectorAll('h3').forEach(h => h.classList.remove('current-reading'));
+                            entry.target.classList.add('current-reading');
+                        }
+                    }
+                });
+            }, { threshold: 0.1 });
 
             for (let i = startIndex; i < endIndex; i++) {
                 try {
@@ -244,19 +251,25 @@
                     let lastText = "";
                     let chapterDiv = document.createElement('div');
                     
+                    chapterDiv.id = 'chapter-container-' + i;
+
                     if (i > startIndex) { 
                         let hr = document.createElement('hr');
                         hr.className = 'chapter-divider';
                         chapterDiv.appendChild(hr);
                     }
 
+                    let titleFound = false;
                     paragraphs.forEach(function(pText) {
                         pText = pText.trim();
                         if (pText.length > 0 && pText !== lastText) {
-                            if (pText.length < 40 && (pText.includes("第") || pText.includes("章") || pText.includes("Chapter"))) {
+                            if (pText.length < 50 && (pText.includes("第") || pText.includes("章") || pText.includes("Chapter"))) {
                                 let h3 = document.createElement('h3');
                                 h3.innerText = pText;
+                                h3.setAttribute('data-index', i);
+                                observer.observe(h3);
                                 chapterDiv.appendChild(h3);
+                                titleFound = true;
                             } else {
                                 let p = document.createElement('p');
                                 p.innerText = pText;
@@ -265,25 +278,60 @@
                             lastText = pText;
                         }
                     });
+
+                    if (!titleFound) {
+                        let tracker = document.createElement('h3');
+                        tracker.innerText = `[第 ${i+1} 章]`;
+                        tracker.style.fontSize = "1px"; tracker.style.color = "transparent"; tracker.style.margin = "0";
+                        tracker.setAttribute('data-index', i);
+                        observer.observe(tracker);
+                        chapterDiv.prepend(tracker);
+                    }
                     viewer.appendChild(chapterDiv);
                 } catch (err) { console.error(err); }
             }
 
             showLoading(false);
-            window.scrollTo(0, 0);
+
+            if (targetScrollIndex !== null) {
+                setTimeout(() => {
+                    var targetEl = document.getElementById('chapter-container-' + targetScrollIndex);
+                    if (targetEl) {
+                        targetEl.scrollIntoView({ behavior: 'auto', block: 'start' });
+                        // 稍微向上偏一点，避免标题被顶栏挡住
+                        window.scrollBy(0, -70); 
+                    }
+                }, 600);
+            } else {
+                window.scrollTo(0, 0);
+            }
+        }
+
+        // ✅ 核心修复：只比对文件名，忽略路径差异
+        function getFilename(url) {
+            if (!url) return "";
+            return url.split('/').pop().split('#')[0];
         }
 
         function loadChapterByHref(href) {
             var targetIndex = -1;
-            var cleanHref = href.split('#')[0]; 
+            var targetFilename = getFilename(href);
+
+            // 遍历所有章节，找文件名一样的
             for(var i=0; i<spine.length; i++) {
-                if(spine[i].href.indexOf(cleanHref) !== -1) {
-                    targetIndex = i; break;
+                if(getFilename(spine[i].href) === targetFilename) {
+                    targetIndex = i; 
+                    break;
                 }
             }
+            
             if(targetIndex !== -1) {
+                // 保存意图
+                localStorage.setItem('exactChapterIndex', targetIndex);
                 var batchStart = Math.floor(targetIndex / BATCH_SIZE) * BATCH_SIZE;
-                renderBatch(batchStart);
+                renderBatch(batchStart, targetIndex);
+            } else {
+                alert("未找到该章节，可能是格式特殊");
             }
         }
 
