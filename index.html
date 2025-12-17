@@ -3,126 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>纯净版epub阅读器</title>
+    <title>ListenFlow - 记忆版</title>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.1.5/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f7f7f7;
-            color: #333;
-            padding-bottom: 120px;
-            padding-top: 60px;
+            margin: 0; padding: 0;
+            background-color: #f7f7f7; color: #333;
+            padding-bottom: 120px; padding-top: 60px;
         }
 
         .header {
-            position: fixed;
-            top: 0; left: 0; right: 0;
-            height: 60px;
-            background: #fff;
+            position: fixed; top: 0; left: 0; right: 0;
+            height: 60px; background: #fff;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            display: flex;
-            align-items: center;
-            padding: 0 15px;
-            z-index: 100;
+            display: flex; align-items: center; padding: 0 15px; z-index: 100;
         }
         
         #toc-select {
-            width: 100%;
-            height: 40px;
-            font-size: 16px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            background: #f9f9f9;
-            padding-left: 10px;
+            width: 100%; height: 40px; font-size: 16px;
+            border: 1px solid #ddd; border-radius: 8px;
+            background: #f9f9f9; padding-left: 10px;
             -webkit-appearance: none; 
         }
 
         #viewer {
-            background: white;
-            padding: 20px 20px;
-            min-height: 60vh;
-            line-height: 1.8;
-            font-size: 20px;
-            white-space: pre-wrap;
+            background: white; padding: 20px 20px;
+            min-height: 60vh; line-height: 1.8;
+            font-size: 20px; white-space: pre-wrap;
         }
         
-        /* 章节之间的分割线 (替代原本丑陋的标题) */
         .chapter-divider {
-            border: 0;
-            height: 1px;
+            border: 0; height: 1px;
             background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0));
-            margin-top: 40px;
-            margin-bottom: 40px;
+            margin-top: 40px; margin-bottom: 40px;
         }
         
         p { margin-bottom: 24px; text-align: justify; }
-
-        /* 标题样式 (书本自带的标题) */
         h1, h2, h3, h4 { color: #000; font-weight: bold; margin-bottom: 20px; }
 
         .footer {
-            position: fixed;
-            bottom: 0; left: 0; right: 0;
-            height: 100px;
-            background: #fff;
+            position: fixed; bottom: 0; left: 0; right: 0;
+            height: 100px; background: #fff;
             box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            flex-direction: column;
+            display: flex; justify-content: center; align-items: center;
+            z-index: 100; flex-direction: column;
         }
 
         .control-group {
-            display: flex;
-            width: 100%;
-            justify-content: space-around;
-            align-items: center;
+            display: flex; width: 100%; justify-content: space-around; align-items: center;
         }
 
         .nav-btn {
-            width: 45%;
-            height: 60px;
-            border: none;
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: bold;
-            color: white;
-            cursor: pointer;
+            width: 45%; height: 60px;
+            border: none; border-radius: 12px;
+            font-size: 18px; font-weight: bold;
+            color: white; cursor: pointer;
         }
         
         #prev-btn { background-color: #95a5a6; }
         #next-btn { background-color: #0078D4; }
-        
         .nav-btn:disabled { opacity: 0.5; background-color: #ccc; }
 
-        .status-tag {
-            font-size: 12px;
-            color: #999;
-            margin-bottom: 8px;
-        }
+        .status-tag { font-size: 12px; color: #999; margin-bottom: 8px; }
 
         .upload-container {
-            padding: 20px;
-            text-align: center;
-            background: #eef;
-            margin-top: 20px;
-            border-radius: 10px;
+            padding: 20px; text-align: center; background: #eef;
+            margin-top: 20px; border-radius: 10px;
+        }
+
+        /* 恢复按钮 - 只有检测到上次有书时才显示 */
+        #resume-btn {
+            display: none; width: 100%; padding: 15px; margin-bottom: 15px;
+            background: #28a745; color: white; border: none; border-radius: 8px;
+            font-size: 16px; cursor: pointer;
         }
         
         #loading {
-            position: fixed;
-            top: 50%; left: 50%;
+            position: fixed; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            display: none;
-            z-index: 200;
+            background: rgba(0,0,0,0.8); color: white;
+            padding: 20px; border-radius: 10px; display: none; z-index: 200;
         }
     </style>
 </head>
@@ -130,13 +93,17 @@
 
     <div class="header">
         <select id="toc-select" disabled>
-            <option>⏳ 正在加载引擎...</option>
+            <option>⏳ 引擎准备中...</option>
         </select>
     </div>
 
     <div class="upload-container" id="upload-area">
-        <h3>纯净版epub阅读器</h3>
-        <p>纯净版 (修复卡顿 & 去除杂标)</p>
+        <h3>💾 ListenFlow v2.4</h3>
+        <p>自动记忆版 (防后台刷新)</p>
+        
+        <button id="resume-btn">🔄 检测到上次读的书，点此继续</button>
+
+        <p style="font-size:12px; color:#666;">或选择新书：</p>
         <input type="file" id="file-input" accept=".epub" style="font-size: 16px;">
     </div>
 
@@ -146,37 +113,75 @@
         <div class="status-tag" id="page-info">准备就绪</div>
         <div class="control-group">
             <button id="prev-btn" class="nav-btn" disabled>⏮ 上一组</button>
-            <button id="next-btn" class="nav-btn" disabled>下一组 (20章) ⏭</button>
+            <button id="next-btn" class="nav-btn" disabled>下一组 ⏭</button>
         </div>
     </div>
 
-    <div id="loading">正在加载内容...</div>
+    <div id="loading">正在处理...</div>
 
     <script>
         var book = null;
         var spine = [];
         var currentStartIndex = 0;
-        var BATCH_SIZE = 20; // 一次加载20章
+        var BATCH_SIZE = 20;
 
-        function showLoading(show) {
-            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        // 初始化存储库
+        localforage.config({ name: 'listenflow_db' });
+
+        // --- 页面加载时：自动检查有没有存过的书 ---
+        window.onload = function() {
+            checkSavedBook();
+        };
+
+        function showLoading(show, text) {
+            var el = document.getElementById('loading');
+            if(text) el.innerText = text;
+            el.style.display = show ? 'block' : 'none';
+        }
+
+        // 检查数据库
+        async function checkSavedBook() {
+            try {
+                var savedBook = await localforage.getItem('currentBook');
+                if (savedBook) {
+                    var btn = document.getElementById('resume-btn');
+                    btn.style.display = 'block';
+                    btn.innerText = "🔄 继续阅读 (上次进度)";
+                    
+                    // 自动加载逻辑：如果用户点了按钮
+                    btn.onclick = function() {
+                        loadBookEngine(savedBook, true); // true 表示是恢复模式
+                    };
+                }
+            } catch (err) {
+                console.log("存储读取失败", err);
+            }
         }
 
         document.getElementById('file-input').addEventListener('change', function(e) {
             var file = e.target.files[0];
             if (!file) return;
+            
+            // 保存文件到数据库 (关键一步！)
+            localforage.setItem('currentBook', file).then(function() {
+                // 清除旧的进度
+                localStorage.removeItem('lastReadIndex');
+                loadBookEngine(file, false);
+            });
+        });
 
-            showLoading(true);
-
+        // 核心加载引擎
+        function loadBookEngine(bookData, isResume) {
+            showLoading(true, "正在恢复书籍...");
+            
             var reader = new FileReader();
             reader.onload = function(e) {
-                var bookData = e.target.result;
-                book = ePub(bookData);
+                var arrayBuffer = e.target.result;
+                book = ePub(arrayBuffer);
 
-                // 加载目录
                 book.loaded.navigation.then(function(toc) {
                     var select = document.getElementById('toc-select');
-                    select.innerHTML = '<option value="-1">📖 跳转到章节...</option>';
+                    select.innerHTML = '<option value="-1">📖 目录...</option>';
                     var flatten = function(items) {
                         items.forEach(function(item) {
                             var option = document.createElement('option');
@@ -193,28 +198,39 @@
                     };
                 });
 
-                // 加载章节列表
                 book.loaded.spine.then(function(s) {
                     spine = s;
-                    currentStartIndex = 0;
                     document.getElementById('upload-area').style.display = 'none';
                     document.getElementById('prev-btn').disabled = false;
                     document.getElementById('next-btn').disabled = false;
-                    renderBatch(currentStartIndex);
+                    
+                    // 决定从哪里开始
+                    var startIndex = 0;
+                    if (isResume) {
+                        var savedIndex = localStorage.getItem('lastReadIndex');
+                        if (savedIndex) {
+                            startIndex = parseInt(savedIndex);
+                        }
+                    }
+                    
+                    renderBatch(startIndex);
                 });
             };
-            reader.readAsArrayBuffer(file);
-        });
+            reader.readAsArrayBuffer(bookData);
+        }
 
         async function renderBatch(startIndex) {
             if (startIndex < 0 || startIndex >= spine.length) return;
             
-            showLoading(true);
+            showLoading(true, "正在加载文本...");
             var viewer = document.getElementById('viewer');
             viewer.innerHTML = ''; 
 
             var endIndex = Math.min(startIndex + BATCH_SIZE, spine.length);
             currentStartIndex = startIndex;
+
+            // --- 记忆关键点：每次加载新章节，都记录下来 ---
+            localStorage.setItem('lastReadIndex', currentStartIndex);
 
             document.getElementById('page-info').innerText = 
                 `当前: 第 ${startIndex + 1} - ${endIndex} 章 (共 ${spine.length} 章)`;
@@ -223,16 +239,12 @@
                 try {
                     let section = spine.get(i);
                     let doc = await section.load(book.load.bind(book));
-                    
                     let text = doc.innerText || doc.textContent;
                     let paragraphs = text.split(/\n+/);
                     let lastText = "";
-                    
                     let chapterDiv = document.createElement('div');
                     
-                    // ✅ 核心修改：删除了 text header，改用 hr 分割线
                     if (i > startIndex) { 
-                        // 如果不是当前这组的第一章，就在前面加个分割线
                         let hr = document.createElement('hr');
                         hr.className = 'chapter-divider';
                         chapterDiv.appendChild(hr);
@@ -240,10 +252,7 @@
 
                     paragraphs.forEach(function(pText) {
                         pText = pText.trim();
-                        // 智能去重：如果是重复标题则跳过
                         if (pText.length > 0 && pText !== lastText) {
-                            
-                            // 简单的标题检测 (短文本且包含关键字)
                             if (pText.length < 40 && (pText.includes("第") || pText.includes("章") || pText.includes("Chapter"))) {
                                 let h3 = document.createElement('h3');
                                 h3.innerText = pText;
@@ -256,11 +265,8 @@
                             lastText = pText;
                         }
                     });
-                    
                     viewer.appendChild(chapterDiv);
-                } catch (err) {
-                    console.error("Error", err);
-                }
+                } catch (err) { console.error(err); }
             }
 
             showLoading(false);
@@ -272,8 +278,7 @@
             var cleanHref = href.split('#')[0]; 
             for(var i=0; i<spine.length; i++) {
                 if(spine[i].href.indexOf(cleanHref) !== -1) {
-                    targetIndex = i;
-                    break;
+                    targetIndex = i; break;
                 }
             }
             if(targetIndex !== -1) {
@@ -285,17 +290,13 @@
         document.getElementById('prev-btn').addEventListener('click', function() {
             if (currentStartIndex - BATCH_SIZE >= 0) {
                 renderBatch(currentStartIndex - BATCH_SIZE);
-            } else {
-                alert("已经是开头了");
-            }
+            } else { alert("已经是开头了"); }
         });
 
         document.getElementById('next-btn').addEventListener('click', function() {
             if (currentStartIndex + BATCH_SIZE < spine.length) {
                 renderBatch(currentStartIndex + BATCH_SIZE);
-            } else {
-                alert("后面没有了");
-            }
+            } else { alert("后面没有了"); }
         });
     </script>
 </body>
