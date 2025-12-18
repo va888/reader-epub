@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ListenFlow - v3.2</title>
+    <title>ListenFlow - v3.3</title>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.1.5/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background-color: #f7f7f7; color: #333; padding-bottom: 120px; padding-top: 60px; }
-        /* 移除点击后的黑框，避免视觉干扰 */
         :focus { outline: none; }
         .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; align-items: center; padding: 0 15px; z-index: 100; }
         #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; padding-left: 10px; -webkit-appearance: none; }
@@ -29,13 +28,16 @@
         .upload-container { padding: 20px; text-align: center; background: #eef; margin-top: 20px; border-radius: 10px; }
         #resume-btn { display: none; width: 100%; padding: 15px; margin-bottom: 15px; background: #28a745; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 200; }
+        
+        /* 强制选中样式，确保不仅是系统选中，视觉上也明显 */
+        ::selection { background: #b3d4fc; color: #000; }
     </style>
 </head>
 <body>
     <div class="header"><select id="toc-select" disabled><option>⏳ 启动中...</option></select></div>
     <div class="upload-container" id="upload-area">
-        <h3>🚀 ListenFlow v3.2</h3>
-        <p>焦点自动锁定版</p>
+        <h3>🚀 ListenFlow v3.3</h3>
+        <p>暴力选中版</p>
         <button id="resume-btn">🔄 继续阅读</button>
         <p style="font-size:12px; color:#666; margin-top:15px;">或选择新书：</p>
         <input type="file" id="file-input" accept=".epub" style="font-size: 16px;">
@@ -147,7 +149,6 @@
                 });
             }, { threshold: 0.1 });
 
-            // 标记第一行，如果不是跳转模式，默认焦点在这里
             let firstElement = null;
 
             for (let i = startIndex; i < endIndex; i++) {
@@ -175,10 +176,7 @@
                                 titleFound = true;
                             } else { el = document.createElement('p'); }
                             el.innerText = pText; 
-                            
-                            // 允许元素获取焦点，这是 v3.2 的核心
                             el.setAttribute('tabindex', '-1'); 
-                            
                             chapterDiv.appendChild(el);
                             if(!firstElement) firstElement = el;
                         }
@@ -198,8 +196,6 @@
             let attempts = 0;
             function attemptScroll() {
                 let targetEl = null;
-                
-                // 1. 查找目标
                 if (targetScrollIndex !== null) {
                     var container = document.getElementById('chapter-container-' + targetScrollIndex);
                     if (container) {
@@ -216,7 +212,6 @@
                         if (!targetEl) targetEl = container.querySelector('h3') || container.querySelector('p');
                     }
                 } else {
-                    // 如果不是跳转，是普通的翻页，目标就是第一个元素
                     targetEl = firstElement;
                 }
 
@@ -224,13 +219,25 @@
                     targetEl.scrollIntoView({ behavior: 'auto', block: 'start' });
                     window.scrollBy(0, -80);
                     targetEl.classList.add('highlight-target');
-                    targetEl.style.backgroundColor = "#ffe69c";
-                    setTimeout(() => targetEl.style.backgroundColor = "transparent", 2000);
                     
-                    // --- v3.2 核心动作：强行聚焦 ---
-                    // 告诉浏览器：“你看这里！”
-                    targetEl.focus();
-                    
+                    // --- v3.3 核心修改：使用 Selection API 暴力选中 ---
+                    try {
+                        var range = document.createRange();
+                        var selection = window.getSelection();
+                        
+                        // 清除之前的选中
+                        selection.removeAllRanges();
+                        
+                        // 选中目标元素里的文字
+                        range.selectNodeContents(targetEl);
+                        selection.addRange(range);
+                        
+                        // 稍微闪烁背景提示
+                        targetEl.style.backgroundColor = "#b3d4fc";
+                        setTimeout(() => targetEl.style.backgroundColor = "transparent", 3000);
+                        
+                    } catch (e) { console.error("选中失败", e); }
+
                 } else if (attempts < 15) {
                     attempts++; setTimeout(attemptScroll, 200);
                 }
