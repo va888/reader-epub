@@ -3,15 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ListenFlow - v3.5</title>
-    <script src="https://lib.baomitu.com/jszip/3.1.5/jszip.min.js"></script>
-    <script src="https://lib.baomitu.com/epub.js/0.3.88/epub.min.js"></script>
-    <script src="https://lib.baomitu.com/localforage/1.10.0/localforage.min.js"></script>
+    <title>ListenFlow - v3.6</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background-color: #f7f7f7; color: #333; padding-bottom: 120px; padding-top: 60px; }
         :focus { outline: none; }
         .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; align-items: center; padding: 0 15px; z-index: 100; }
-        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; padding-left: 10px; -webkit-appearance: none; }
+        #toc-select { width: 75%; height: 40px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; padding-left: 10px; -webkit-appearance: none; }
+        
+        /* 🚨 急救按钮样式 */
+        #reset-app-btn {
+            width: 20%; height: 40px; margin-left: 5%;
+            background: #e74c3c; color: white; border: none; border-radius: 8px;
+            font-size: 14px; font-weight: bold; cursor: pointer;
+        }
+
         #viewer { background: white; padding: 20px 20px; min-height: 60vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; }
         .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0)); margin-top: 40px; margin-bottom: 40px; }
         @keyframes flash { 0% { background-color: #ffe69c; } 100% { background-color: transparent; } }
@@ -29,28 +37,30 @@
         #resume-btn { display: none; width: 100%; padding: 15px; margin-bottom: 15px; background: #28a745; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 200; }
         ::selection { background: #b3d4fc; color: #000; }
-        /* 提示小字 */
-        .tip-text { font-size: 11px; color: #888; margin-top: 5px; }
     </style>
 </head>
 <body>
-    <div class="header"><select id="toc-select" disabled><option>⏳ 启动中...</option></select></div>
+    <div class="header">
+        <select id="toc-select" disabled><option>⏳ 启动中...</option></select>
+        <button id="reset-app-btn" onclick="hardReset()">⚠️ 重置</button>
+    </div>
+
     <div class="upload-container" id="upload-area">
-        <h3>🚀 ListenFlow v3.5</h3>
-        <p>智能锁 · 进度修复版</p>
+        <h3>🚀 ListenFlow v3.6</h3>
+        <p>急救版 (防卡死)</p>
         <button id="resume-btn">🔄 继续阅读</button>
         <p style="font-size:12px; color:#666; margin-top:15px;">或选择新书：</p>
         <input type="file" id="file-input" accept=".epub" style="font-size: 16px;">
-        <p class="tip-text">💡 提示：不想翻墙请在Edge语音设置里选"System"或"Huihui"等本地语音。</p>
     </div>
+
     <div id="viewer"></div>
+
     <div class="footer">
         <div class="status-tag" id="page-info">准备就绪</div>
         <div class="control-group">
             <button id="prev-btn" class="nav-btn" disabled>⏮ 上一组</button>
             <button id="next-btn" class="nav-btn" disabled>下一组 ⏭</button>
         </div>
-        <div class="tip-text" style="margin-top:5px;">锁屏前请等待页面静止</div>
     </div>
     <div id="loading">处理中...</div>
 
@@ -58,30 +68,59 @@
         var book = null; var spine = [];
         var currentStartIndex = 0; var BATCH_SIZE = 20;
         var observer = null;
-        
-        // --- v3.5 智能锁：默认为 false ---
-        // 只有点击“继续阅读”时才会变成 true，且只有跳转成功后才会解锁
         var isProgressLocked = false; 
+
+        // 🚑 急救功能：强制重置
+        function hardReset() {
+            if(confirm("确定要清空所有数据和缓存吗？如果卡住了请点确定。")) {
+                localforage.clear().then(function() {
+                    localStorage.clear();
+                    alert("清理完毕，页面将刷新。");
+                    window.location.reload();
+                }).catch(function(err){
+                    alert("清理失败，请手动清除浏览器缓存");
+                });
+            }
+        }
 
         localforage.config({ name: 'listenflow_db' });
 
-        window.onload = function() { checkSavedBook(); };
+        window.onload = function() { 
+            // ⏰ 超时保护：如果 3 秒还没读出书，就认为是卡死了，强制显示上传页
+            var loadTimeout = setTimeout(function() {
+                console.warn("加载超时，强制显示上传页");
+                document.getElementById('upload-area').style.display = 'block';
+                document.getElementById('toc-select').innerHTML = '<option>⚠️ 加载超时</option>';
+            }, 3000);
+
+            checkSavedBook(loadTimeout); 
+        };
+
         function showLoading(show, text) {
             var el = document.getElementById('loading');
             if(text) el.innerText = text; el.style.display = show ? 'block' : 'none';
         }
 
-        async function checkSavedBook() {
+        async function checkSavedBook(timeoutId) {
             try {
                 var savedBook = await localforage.getItem('currentBook');
+                // 成功读取，取消超时警报
+                clearTimeout(timeoutId);
+
                 if (savedBook) {
                     var btn = document.getElementById('resume-btn');
                     var lastIdx = localStorage.getItem('exactChapterIndex');
                     var info = lastIdx ? ` (第 ${parseInt(lastIdx)+1} 章)` : "";
                     btn.innerText = "🔄 继续阅读" + info; btn.style.display = 'block';
                     btn.onclick = function() { loadBookEngine(savedBook, true); };
+                    document.getElementById('toc-select').innerHTML = '<option>✅ 发现旧书</option>';
+                } else {
+                    document.getElementById('toc-select').innerHTML = '<option>请上传书籍</option>';
                 }
-            } catch (err) {}
+            } catch (err) {
+                console.log("存储读取失败", err);
+                clearTimeout(timeoutId); // 即使失败也要取消超时，避免重复刷新UI
+            }
         }
 
         document.getElementById('file-input').addEventListener('change', function(e) {
@@ -95,45 +134,48 @@
             showLoading(true, "解析书籍...");
             var reader = new FileReader();
             reader.onload = function(e) {
-                book = ePub(e.target.result);
-                book.loaded.spine.then(function(s) {
-                    spine = s;
-                    book.loaded.navigation.then(function(toc) {
-                        var select = document.getElementById('toc-select');
-                        select.innerHTML = '<option value="-1">📖 点击跳转...</option>';
-                        var flatten = function(items) {
-                            items.forEach(function(item) {
-                                var option = document.createElement('option');
-                                option.text = item.label.trim();
-                                option.value = item.href + "|" + item.label.trim();
-                                select.add(option);
-                                if (item.subitems) flatten(item.subitems);
-                            });
-                        };
-                        flatten(toc.toc); select.disabled = false;
-                        select.onchange = function() {
-                            if(this.value !== "-1") {
-                                var parts = this.value.split('|');
-                                loadChapterByMatch(parts[0], parts[1]);
+                try {
+                    book = ePub(e.target.result);
+                    book.loaded.spine.then(function(s) {
+                        spine = s;
+                        book.loaded.navigation.then(function(toc) {
+                            var select = document.getElementById('toc-select');
+                            select.innerHTML = '<option value="-1">📖 点击跳转...</option>';
+                            var flatten = function(items) {
+                                items.forEach(function(item) {
+                                    var option = document.createElement('option');
+                                    option.text = item.label.trim();
+                                    option.value = item.href + "|" + item.label.trim();
+                                    select.add(option);
+                                    if (item.subitems) flatten(item.subitems);
+                                });
+                            };
+                            flatten(toc.toc); select.disabled = false;
+                            select.onchange = function() {
+                                if(this.value !== "-1") {
+                                    var parts = this.value.split('|');
+                                    loadChapterByMatch(parts[0], parts[1]);
+                                }
+                            };
+                        });
+                        document.getElementById('upload-area').style.display = 'none';
+                        document.getElementById('prev-btn').disabled = false;
+                        document.getElementById('next-btn').disabled = false;
+                        
+                        var startIndex = 0; 
+                        if (isResume) {
+                            var saved = localStorage.getItem('exactChapterIndex');
+                            if (saved) {
+                                startIndex = Math.floor(parseInt(saved) / BATCH_SIZE) * BATCH_SIZE;
+                                isProgressLocked = true;
                             }
-                        };
-                    });
-                    document.getElementById('upload-area').style.display = 'none';
-                    document.getElementById('prev-btn').disabled = false;
-                    document.getElementById('next-btn').disabled = false;
-                    
-                    var startIndex = 0; 
-                    if (isResume) {
-                        var saved = localStorage.getItem('exactChapterIndex');
-                        if (saved) {
-                            startIndex = Math.floor(parseInt(saved) / BATCH_SIZE) * BATCH_SIZE;
-                            // 🔒 开启智能锁：在跳转完成前，禁止保存任何进度！
-                            isProgressLocked = true;
-                            console.log("🔒 进度锁已开启，等待跳转...");
                         }
-                    }
-                    renderBatch(startIndex, isResume ? parseInt(localStorage.getItem('exactChapterIndex')) : null);
-                });
+                        renderBatch(startIndex, isResume ? parseInt(localStorage.getItem('exactChapterIndex')) : null);
+                    });
+                } catch (err) {
+                    alert("书籍解析失败，可能是文件损坏。请点击重置。");
+                    showLoading(false);
+                }
             };
             reader.readAsArrayBuffer(data);
         }
@@ -149,11 +191,8 @@
             var endIndex = Math.min(startIndex + BATCH_SIZE, spine.length);
             document.getElementById('page-info').innerText = `当前: 第 ${startIndex + 1} - ${endIndex} 章`;
 
-            // --- 观察者 ---
             observer = new IntersectionObserver((entries) => {
-                // 🔒 如果锁着，绝对不许保存！
                 if (isProgressLocked) return;
-
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
                         var idx = entry.target.getAttribute('data-index');
@@ -210,12 +249,9 @@
             }
             showLoading(false);
 
-            // --- 滚动逻辑 ---
             let attempts = 0;
             function attemptScroll() {
                 let targetEl = null;
-                
-                // 恢复模式：找上次的章节
                 if (targetScrollIndex !== null) {
                     var container = document.getElementById('chapter-container-' + targetScrollIndex);
                     if (container) {
@@ -239,8 +275,6 @@
                     targetEl.scrollIntoView({ behavior: 'auto', block: 'start' });
                     window.scrollBy(0, -80);
                     targetEl.classList.add('highlight-target');
-                    
-                    // 暴力选中
                     try {
                         var range = document.createRange();
                         var selection = window.getSelection();
@@ -249,20 +283,13 @@
                         selection.addRange(range);
                     } catch (e) {}
 
-                    // 🔓 解锁时刻：只有真正跳到了，才允许保存进度
                     if (isProgressLocked) {
-                        // 稍微延迟一下，防止滚动过程中的惯性误触
-                        setTimeout(() => { 
-                            isProgressLocked = false; 
-                            console.log("🔓 进度锁已解除，开始记录");
-                        }, 1000);
+                        setTimeout(() => { isProgressLocked = false; console.log("🔓 进度解锁"); }, 1000);
                     }
-
-                } else if (attempts < 20) { // 尝试次数加到20次
+                } else if (attempts < 20) {
                     attempts++; setTimeout(attemptScroll, 200);
                 } else {
-                    // 超时没找到，也要强制解锁，否则永远不存了
-                    if (isProgressLocked) { isProgressLocked = false; }
+                    if (isProgressLocked) isProgressLocked = false;
                 }
             }
             attemptScroll();
@@ -282,9 +309,7 @@
                     }
                 }
             }
-
             if(targetIndex !== -1) {
-                // 手动点击不用锁，直接跳
                 localStorage.setItem('exactChapterIndex', targetIndex);
                 var batchStart = Math.floor(targetIndex / BATCH_SIZE) * BATCH_SIZE;
                 renderBatch(batchStart, targetIndex, label);
