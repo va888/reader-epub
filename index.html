@@ -3,12 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ListenFlow - v3.1</title>
+    <title>ListenFlow - v3.2</title>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.1.5/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background-color: #f7f7f7; color: #333; padding-bottom: 120px; padding-top: 60px; }
+        /* 移除点击后的黑框，避免视觉干扰 */
+        :focus { outline: none; }
         .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; align-items: center; padding: 0 15px; z-index: 100; }
         #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; padding-left: 10px; -webkit-appearance: none; }
         #viewer { background: white; padding: 20px 20px; min-height: 60vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; }
@@ -32,8 +34,8 @@
 <body>
     <div class="header"><select id="toc-select" disabled><option>⏳ 启动中...</option></select></div>
     <div class="upload-container" id="upload-area">
-        <h3>🚀 ListenFlow v3.1</h3>
-        <p>精准锁定版</p>
+        <h3>🚀 ListenFlow v3.2</h3>
+        <p>焦点自动锁定版</p>
         <button id="resume-btn">🔄 继续阅读</button>
         <p style="font-size:12px; color:#666; margin-top:15px;">或选择新书：</p>
         <input type="file" id="file-input" accept=".epub" style="font-size: 16px;">
@@ -145,6 +147,9 @@
                 });
             }, { threshold: 0.1 });
 
+            // 标记第一行，如果不是跳转模式，默认焦点在这里
+            let firstElement = null;
+
             for (let i = startIndex; i < endIndex; i++) {
                 try {
                     let section = spine.get(i);
@@ -169,7 +174,13 @@
                                 observer.observe(el);
                                 titleFound = true;
                             } else { el = document.createElement('p'); }
-                            el.innerText = pText; chapterDiv.appendChild(el);
+                            el.innerText = pText; 
+                            
+                            // 允许元素获取焦点，这是 v3.2 的核心
+                            el.setAttribute('tabindex', '-1'); 
+                            
+                            chapterDiv.appendChild(el);
+                            if(!firstElement) firstElement = el;
                         }
                     });
                     if (!titleFound) {
@@ -177,42 +188,36 @@
                         tracker.innerText = `[${i}]`; tracker.style.cssText="font-size:1px;color:transparent;";
                         tracker.setAttribute('data-index', i); observer.observe(tracker);
                         chapterDiv.prepend(tracker);
+                        if(!firstElement) firstElement = tracker;
                     }
                     viewer.appendChild(chapterDiv);
                 } catch (err) {}
             }
             showLoading(false);
 
-            // --- v3.1 核心修复：限定搜索范围 ---
             let attempts = 0;
             function attemptScroll() {
                 let targetEl = null;
                 
-                // 必须先找到对应的章节容器！
+                // 1. 查找目标
                 if (targetScrollIndex !== null) {
                     var container = document.getElementById('chapter-container-' + targetScrollIndex);
-                    
                     if (container) {
-                        // 1. 如果有文字目标，只在这个容器里找！
-                        // 绝对不许去别的容器（比如目录页）找
                         if (targetText) {
                             var allElements = container.getElementsByTagName('*');
                             var cleanTarget = targetText.replace(/\s+/g, '').substring(0, 8);
-                            
                             for (var k = 0; k < allElements.length; k++) {
                                 var cleanContent = allElements[k].innerText.replace(/\s+/g, '');
                                 if (cleanContent.includes(cleanTarget)) {
-                                    targetEl = allElements[k];
-                                    break;
+                                    targetEl = allElements[k]; break;
                                 }
                             }
                         }
-                        
-                        // 2. 如果容器里没找到文字，就直接定位到容器顶部
-                        if (!targetEl) {
-                            targetEl = container;
-                        }
+                        if (!targetEl) targetEl = container.querySelector('h3') || container.querySelector('p');
                     }
+                } else {
+                    // 如果不是跳转，是普通的翻页，目标就是第一个元素
+                    targetEl = firstElement;
                 }
 
                 if (targetEl) {
@@ -221,6 +226,11 @@
                     targetEl.classList.add('highlight-target');
                     targetEl.style.backgroundColor = "#ffe69c";
                     setTimeout(() => targetEl.style.backgroundColor = "transparent", 2000);
+                    
+                    // --- v3.2 核心动作：强行聚焦 ---
+                    // 告诉浏览器：“你看这里！”
+                    targetEl.focus();
+                    
                 } else if (attempts < 15) {
                     attempts++; setTimeout(attemptScroll, 200);
                 }
@@ -230,8 +240,6 @@
 
         function loadChapterByMatch(href, label) {
             var targetIndex = -1;
-            
-            // 找 Index
             var spineItem = book.spine.get(href);
             if (spineItem) {
                 targetIndex = spineItem.index;
