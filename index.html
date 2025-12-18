@@ -3,21 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ListenFlow - v3.6</title>
+    <title>EPUB阅读器纯净版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background-color: #f7f7f7; color: #333; padding-bottom: 120px; padding-top: 60px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background-color: #fff; color: #333; padding-bottom: 120px; padding-top: 60px; }
         :focus { outline: none; }
-        .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; align-items: center; padding: 0 15px; z-index: 100; }
-        #toc-select { width: 75%; height: 40px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; padding-left: 10px; -webkit-appearance: none; }
         
-        /* 🚨 急救按钮样式 */
-        #reset-app-btn {
-            width: 20%; height: 40px; margin-left: 5%;
-            background: #e74c3c; color: white; border: none; border-radius: 8px;
-            font-size: 14px; font-weight: bold; cursor: pointer;
+        /* 顶部栏回归纯白极简 */
+        .header { 
+            position: fixed; top: 0; left: 0; right: 0; 
+            height: 60px; background: #fff; 
+            border-bottom: 1px solid #f0f0f0; /* 极淡的分割线 */
+            display: flex; align-items: center; padding: 0 15px; z-index: 100; 
+        }
+        
+        #toc-select { 
+            width: 100%; height: 40px; font-size: 16px; 
+            border: 1px solid #eee; border-radius: 8px; 
+            background: #f9f9f9; padding-left: 10px; 
+            -webkit-appearance: none; color: #333;
         }
 
         #viewer { background: white; padding: 20px 20px; min-height: 60vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; }
@@ -27,39 +33,72 @@
         h3.current-reading { color: #d35400; border-left: 4px solid #d35400; padding-left: 10px; }
         p { margin-bottom: 24px; text-align: justify; }
         h1, h2, h3, h4 { color: #000; font-weight: bold; margin-bottom: 20px; }
-        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 120px; background: #fff; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
+        
+        .footer { 
+            position: fixed; bottom: 0; left: 0; right: 0; 
+            height: 120px; background: #fff; 
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.05); /* 更柔和的阴影 */
+            display: flex; justify-content: center; align-items: center; 
+            z-index: 100; flex-direction: column; 
+        }
+        
         .control-group { display: flex; width: 100%; justify-content: space-around; align-items: center; }
-        .nav-btn { width: 45%; height: 60px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; color: white; cursor: pointer; }
-        #prev-btn { background-color: #95a5a6; } #next-btn { background-color: #0078D4; }
-        .nav-btn:disabled { opacity: 0.5; background-color: #ccc; }
-        .status-tag { font-size: 12px; color: #999; margin-bottom: 5px; text-align: center; }
-        .upload-container { padding: 20px; text-align: center; background: #eef; margin-top: 20px; border-radius: 10px; }
-        #resume-btn { display: none; width: 100%; padding: 15px; margin-bottom: 15px; background: #28a745; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 200; }
+        
+        .nav-btn { 
+            width: 45%; height: 55px; border: none; border-radius: 12px; 
+            font-size: 18px; font-weight: bold; color: white; cursor: pointer; 
+            transition: opacity 0.2s;
+        }
+        
+        #prev-btn { background-color: #bdc3c7; color: #555; } /* 上一组颜色淡一点 */
+        #next-btn { background-color: #3498db; } /* 主色调蓝 */
+        
+        .nav-btn:disabled { opacity: 0.3; }
+        .status-tag { font-size: 12px; color: #999; margin-bottom: 8px; text-align: center; }
+        
+        .upload-container { 
+            padding: 40px 20px; text-align: center; 
+            margin-top: 40px; 
+        }
+        
+        #resume-btn { 
+            display: none; width: 80%; padding: 15px; margin: 0 auto 20px auto;
+            background: #27ae60; color: white; border: none; border-radius: 50px; /* 圆角按钮 */
+            font-size: 18px; font-weight: bold; cursor: pointer; 
+            box-shadow: 0 4px 10px rgba(39, 174, 96, 0.3);
+        }
+        
+        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 200; backdrop-filter: blur(5px); }
         ::selection { background: #b3d4fc; color: #000; }
+        .tip-text { font-size: 12px; color: #aaa; margin-top: 10px; }
     </style>
 </head>
 <body>
     <div class="header">
-        <select id="toc-select" disabled><option>⏳ 启动中...</option></select>
-        <button id="reset-app-btn" onclick="hardReset()">⚠️ 重置</button>
+        <select id="toc-select" disabled><option>⏳ 载入中...</option></select>
     </div>
 
     <div class="upload-container" id="upload-area">
-        <h3>🚀 ListenFlow v3.6</h3>
-        <p>急救版 (防卡死)</p>
+        <h2 style="color:#333; margin-bottom: 10px;">EPUB阅读器</h2>
+        <p style="color:#999; font-size: 14px; margin-bottom: 30px;">纯净版 · 自动记忆进度</p>
+        
         <button id="resume-btn">🔄 继续阅读</button>
-        <p style="font-size:12px; color:#666; margin-top:15px;">或选择新书：</p>
-        <input type="file" id="file-input" accept=".epub" style="font-size: 16px;">
+
+        <div style="margin-top: 20px;">
+            <label for="file-input" style="color: #3498db; font-size: 16px; cursor: pointer; padding: 10px;">
+                📂 打开新书
+            </label>
+            <input type="file" id="file-input" accept=".epub" style="display: none;">
+        </div>
     </div>
 
     <div id="viewer"></div>
 
     <div class="footer">
-        <div class="status-tag" id="page-info">准备就绪</div>
+        <div class="status-tag" id="page-info">等待书籍...</div>
         <div class="control-group">
-            <button id="prev-btn" class="nav-btn" disabled>⏮ 上一组</button>
-            <button id="next-btn" class="nav-btn" disabled>下一组 ⏭</button>
+            <button id="prev-btn" class="nav-btn" disabled>上一组</button>
+            <button id="next-btn" class="nav-btn" disabled>下一组</button>
         </div>
     </div>
     <div id="loading">处理中...</div>
@@ -70,29 +109,14 @@
         var observer = null;
         var isProgressLocked = false; 
 
-        // 🚑 急救功能：强制重置
-        function hardReset() {
-            if(confirm("确定要清空所有数据和缓存吗？如果卡住了请点确定。")) {
-                localforage.clear().then(function() {
-                    localStorage.clear();
-                    alert("清理完毕，页面将刷新。");
-                    window.location.reload();
-                }).catch(function(err){
-                    alert("清理失败，请手动清除浏览器缓存");
-                });
-            }
-        }
-
         localforage.config({ name: 'listenflow_db' });
 
         window.onload = function() { 
-            // ⏰ 超时保护：如果 3 秒还没读出书，就认为是卡死了，强制显示上传页
+            // 依然保留超时保护，只是不显示重置按钮了
             var loadTimeout = setTimeout(function() {
-                console.warn("加载超时，强制显示上传页");
                 document.getElementById('upload-area').style.display = 'block';
-                document.getElementById('toc-select').innerHTML = '<option>⚠️ 加载超时</option>';
+                document.getElementById('toc-select').innerHTML = '<option>⚠️ 加载超时 (请重新选书)</option>';
             }, 3000);
-
             checkSavedBook(loadTimeout); 
         };
 
@@ -104,22 +128,19 @@
         async function checkSavedBook(timeoutId) {
             try {
                 var savedBook = await localforage.getItem('currentBook');
-                // 成功读取，取消超时警报
                 clearTimeout(timeoutId);
-
                 if (savedBook) {
                     var btn = document.getElementById('resume-btn');
                     var lastIdx = localStorage.getItem('exactChapterIndex');
                     var info = lastIdx ? ` (第 ${parseInt(lastIdx)+1} 章)` : "";
                     btn.innerText = "🔄 继续阅读" + info; btn.style.display = 'block';
                     btn.onclick = function() { loadBookEngine(savedBook, true); };
-                    document.getElementById('toc-select').innerHTML = '<option>✅ 发现旧书</option>';
+                    document.getElementById('toc-select').innerHTML = '<option>✅ 书籍已就绪</option>';
                 } else {
-                    document.getElementById('toc-select').innerHTML = '<option>请上传书籍</option>';
+                    document.getElementById('toc-select').innerHTML = '<option>请打开书籍</option>';
                 }
             } catch (err) {
-                console.log("存储读取失败", err);
-                clearTimeout(timeoutId); // 即使失败也要取消超时，避免重复刷新UI
+                console.log("Error", err); clearTimeout(timeoutId);
             }
         }
 
@@ -131,7 +152,7 @@
         });
 
         function loadBookEngine(data, isResume) {
-            showLoading(true, "解析书籍...");
+            showLoading(true, "正在解析...");
             var reader = new FileReader();
             reader.onload = function(e) {
                 try {
@@ -140,7 +161,7 @@
                         spine = s;
                         book.loaded.navigation.then(function(toc) {
                             var select = document.getElementById('toc-select');
-                            select.innerHTML = '<option value="-1">📖 点击跳转...</option>';
+                            select.innerHTML = '<option value="-1">📖 跳转目录...</option>';
                             var flatten = function(items) {
                                 items.forEach(function(item) {
                                     var option = document.createElement('option');
@@ -173,7 +194,7 @@
                         renderBatch(startIndex, isResume ? parseInt(localStorage.getItem('exactChapterIndex')) : null);
                     });
                 } catch (err) {
-                    alert("书籍解析失败，可能是文件损坏。请点击重置。");
+                    alert("文件解析错误，请尝试重新选择文件");
                     showLoading(false);
                 }
             };
@@ -182,7 +203,7 @@
 
         async function renderBatch(startIndex, targetScrollIndex = null, targetText = null) {
             if (startIndex < 0 || startIndex >= spine.length) return;
-            showLoading(true, "加载文本...");
+            showLoading(true, "排版中...");
             var viewer = document.getElementById('viewer');
             if (observer) observer.disconnect();
             viewer.innerHTML = ''; 
@@ -284,7 +305,7 @@
                     } catch (e) {}
 
                     if (isProgressLocked) {
-                        setTimeout(() => { isProgressLocked = false; console.log("🔓 进度解锁"); }, 1000);
+                        setTimeout(() => { isProgressLocked = false; }, 1000);
                     }
                 } else if (attempts < 20) {
                     attempts++; setTimeout(attemptScroll, 200);
