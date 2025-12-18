@@ -11,6 +11,10 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background-color: #fff; color: #333; padding-bottom: 120px; padding-top: 60px; }
         :focus { outline: none; }
         .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: #fff; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; padding: 0 15px; z-index: 100; }
+        
+        /* 🔴 版本号标识 (调试用，确认更新成功) */
+        .ver-tag { position: absolute; top: 5px; left: 5px; font-size: 10px; color: red; font-weight: bold; z-index: 101; background: #ffe6e6; padding: 2px 4px; border-radius: 4px; }
+
         #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid #eee; border-radius: 8px; background: #f9f9f9; padding-left: 10px; -webkit-appearance: none; color: #333; }
         #viewer { background: white; padding: 20px 20px; min-height: 60vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; }
         .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0)); margin-top: 40px; margin-bottom: 40px; }
@@ -34,12 +38,12 @@
 </head>
 <body>
     <div class="header">
-        <select id="toc-select" disabled><option>⏳ 载入中...</option></select>
+        <div class="ver-tag">v4.2</div> <select id="toc-select" disabled><option>⏳ 载入中...</option></select>
     </div>
 
     <div class="upload-container" id="upload-area">
         <h2 style="color:#333; margin-bottom: 10px;">EPUB阅读器</h2>
-        <p style="color:#999; font-size: 14px; margin-bottom: 30px;">纯净版 · 自动过滤乱码</p>
+        <p style="color:#999; font-size: 14px; margin-bottom: 30px;">纯净版 · 强力净化</p>
         
         <button id="resume-btn">🔄 继续阅读</button>
 
@@ -67,6 +71,9 @@
         var currentStartIndex = 0; var BATCH_SIZE = 20;
         var observer = null;
         var isProgressLocked = false; 
+        
+        // 🗑️ 垃圾词库扩充
+        var JUNK_WORDS = ["cover", "unknown", "未知", "封面", "title page", "copyright", "content", "目录"];
 
         localforage.config({ name: 'listenflow_db' });
 
@@ -104,10 +111,6 @@
 
         document.getElementById('file-input').addEventListener('change', function(e) {
             var file = e.target.files[0]; if (!file) return;
-            var fileName = file.name.toLowerCase();
-            if (!fileName.endsWith('.epub')) {
-                alert("⚠️ 提示：你选择的好像不是 epub 文件，解析可能会失败。");
-            }
             localforage.setItem('currentBook', file).then(() => {
                 localStorage.removeItem('exactChapterIndex'); loadBookEngine(file, false);
             });
@@ -195,12 +198,9 @@
                     let section = spine.get(i);
                     let doc = await section.load(book.load.bind(book));
 
-                    // 🛠️ v4.0 核心修复：移除所有CSS样式和脚本标签
-                    // 这就是解决你截图里那些 "@page", "body {" 乱码的关键
                     var garbage = doc.querySelectorAll('style, script, link, meta');
                     garbage.forEach(function(item){ item.remove(); });
 
-                    // 安全提取纯文本
                     let text = doc.body ? doc.body.innerText : (doc.textContent || "");
                     
                     let paragraphs = text.split(/\n+/);
@@ -213,8 +213,15 @@
 
                     let titleFound = false;
                     paragraphs.forEach(function(pText) {
-                        pText = pText.trim();
-                        if (pText.length > 0) {
+                        // 1. 去空格
+                        pText = pText.replace(/[\u00a0\u200b\u3000]/g, ' ').trim();
+                        
+                        // 2. 强力检查：是否只有标点符号 (比如那个 "-")
+                        // 如果这一行把汉字、字母、数字都删掉后，长度是0，说明全是符号，直接删
+                        var hasContent = pText.replace(/[^\w\u4e00-\u9fa5]/g, '').length > 0;
+
+                        // 3. 核心判断：非空 + 有实质内容 + 不是垃圾词
+                        if (pText.length > 0 && hasContent && !JUNK_WORDS.includes(pText.toLowerCase())) {
                             let el;
                             if (!titleFound && pText.length < 60 && (pText.includes("第") || pText.includes("章") || pText.includes("Chapter"))) {
                                 el = document.createElement('h3');
@@ -320,4 +327,6 @@
     </script>
 </body>
 </html>
+
+
 
