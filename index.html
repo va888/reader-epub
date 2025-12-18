@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ListenFlow - v3.3</title>
-    <script src="https://cdn.jsdelivr.net/npm/jszip@3.1.5/dist/jszip.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+    <title>ListenFlow - v3.4</title>
+    <script src="https://lib.baomitu.com/jszip/3.1.5/jszip.min.js"></script>
+    <script src="https://lib.baomitu.com/epub.js/0.3.88/epub.min.js"></script>
+    <script src="https://lib.baomitu.com/localforage/1.10.0/localforage.min.js"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background-color: #f7f7f7; color: #333; padding-bottom: 120px; padding-top: 60px; }
         :focus { outline: none; }
@@ -28,16 +28,14 @@
         .upload-container { padding: 20px; text-align: center; background: #eef; margin-top: 20px; border-radius: 10px; }
         #resume-btn { display: none; width: 100%; padding: 15px; margin-bottom: 15px; background: #28a745; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 200; }
-        
-        /* 强制选中样式，确保不仅是系统选中，视觉上也明显 */
         ::selection { background: #b3d4fc; color: #000; }
     </style>
 </head>
 <body>
     <div class="header"><select id="toc-select" disabled><option>⏳ 启动中...</option></select></div>
     <div class="upload-container" id="upload-area">
-        <h3>🚀 ListenFlow v3.3</h3>
-        <p>暴力选中版</p>
+        <h3>🚀 ListenFlow v3.4</h3>
+        <p>进度保护版</p>
         <button id="resume-btn">🔄 继续阅读</button>
         <p style="font-size:12px; color:#666; margin-top:15px;">或选择新书：</p>
         <input type="file" id="file-input" accept=".epub" style="font-size: 16px;">
@@ -56,6 +54,10 @@
         var book = null; var spine = [];
         var currentStartIndex = 0; var BATCH_SIZE = 20;
         var observer = null;
+        
+        // --- 核心修复：进度锁 ---
+        var isRestoring = false; // 是否正在恢复进度中
+
         localforage.config({ name: 'listenflow_db' });
 
         window.onload = function() { checkSavedBook(); };
@@ -114,12 +116,19 @@
                     document.getElementById('upload-area').style.display = 'none';
                     document.getElementById('prev-btn').disabled = false;
                     document.getElementById('next-btn').disabled = false;
+                    
                     var startIndex = 0; 
                     if (isResume) {
                         var saved = localStorage.getItem('exactChapterIndex');
-                        if (saved) startIndex = Math.floor(parseInt(saved) / BATCH_SIZE) * BATCH_SIZE;
+                        if (saved) {
+                            startIndex = Math.floor(parseInt(saved) / BATCH_SIZE) * BATCH_SIZE;
+                            // 开启保护锁：正在恢复，禁止雷达乱写
+                            isRestoring = true;
+                            // 3秒后解锁，确保跳转完成
+                            setTimeout(() => { isRestoring = false; console.log("进度锁已解除"); }, 3000);
+                        }
                     }
-                    renderBatch(startIndex, null, null);
+                    renderBatch(startIndex, isResume ? parseInt(localStorage.getItem('exactChapterIndex')) : null);
                 });
             };
             reader.readAsArrayBuffer(data);
@@ -137,6 +146,9 @@
             document.getElementById('page-info').innerText = `当前: 第 ${startIndex + 1} - ${endIndex} 章`;
 
             observer = new IntersectionObserver((entries) => {
+                // 如果正在恢复进度中，直接无视，不许保存！
+                if (isRestoring) return;
+
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
                         var idx = entry.target.getAttribute('data-index');
@@ -220,23 +232,15 @@
                     window.scrollBy(0, -80);
                     targetEl.classList.add('highlight-target');
                     
-                    // --- v3.3 核心修改：使用 Selection API 暴力选中 ---
                     try {
                         var range = document.createRange();
                         var selection = window.getSelection();
-                        
-                        // 清除之前的选中
                         selection.removeAllRanges();
-                        
-                        // 选中目标元素里的文字
                         range.selectNodeContents(targetEl);
                         selection.addRange(range);
-                        
-                        // 稍微闪烁背景提示
                         targetEl.style.backgroundColor = "#b3d4fc";
                         setTimeout(() => targetEl.style.backgroundColor = "transparent", 3000);
-                        
-                    } catch (e) { console.error("选中失败", e); }
+                    } catch (e) {}
 
                 } else if (attempts < 15) {
                     attempts++; setTimeout(attemptScroll, 200);
@@ -261,6 +265,7 @@
             }
 
             if(targetIndex !== -1) {
+                // 手动跳转不需要保护锁，因为是用户主动行为
                 localStorage.setItem('exactChapterIndex', targetIndex);
                 var batchStart = Math.floor(targetIndex / BATCH_SIZE) * BATCH_SIZE;
                 renderBatch(batchStart, targetIndex, label);
