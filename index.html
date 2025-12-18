@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ListenFlow - v3.4</title>
+    <title>ListenFlow - v3.5</title>
     <script src="https://lib.baomitu.com/jszip/3.1.5/jszip.min.js"></script>
     <script src="https://lib.baomitu.com/epub.js/0.3.88/epub.min.js"></script>
     <script src="https://lib.baomitu.com/localforage/1.10.0/localforage.min.js"></script>
@@ -19,26 +19,29 @@
         h3.current-reading { color: #d35400; border-left: 4px solid #d35400; padding-left: 10px; }
         p { margin-bottom: 24px; text-align: justify; }
         h1, h2, h3, h4 { color: #000; font-weight: bold; margin-bottom: 20px; }
-        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 100px; background: #fff; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 120px; background: #fff; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
         .control-group { display: flex; width: 100%; justify-content: space-around; align-items: center; }
         .nav-btn { width: 45%; height: 60px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; color: white; cursor: pointer; }
         #prev-btn { background-color: #95a5a6; } #next-btn { background-color: #0078D4; }
         .nav-btn:disabled { opacity: 0.5; background-color: #ccc; }
-        .status-tag { font-size: 12px; color: #999; margin-bottom: 8px; }
+        .status-tag { font-size: 12px; color: #999; margin-bottom: 5px; text-align: center; }
         .upload-container { padding: 20px; text-align: center; background: #eef; margin-top: 20px; border-radius: 10px; }
         #resume-btn { display: none; width: 100%; padding: 15px; margin-bottom: 15px; background: #28a745; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 200; }
         ::selection { background: #b3d4fc; color: #000; }
+        /* 提示小字 */
+        .tip-text { font-size: 11px; color: #888; margin-top: 5px; }
     </style>
 </head>
 <body>
     <div class="header"><select id="toc-select" disabled><option>⏳ 启动中...</option></select></div>
     <div class="upload-container" id="upload-area">
-        <h3>🚀 ListenFlow v3.4</h3>
-        <p>进度保护版</p>
+        <h3>🚀 ListenFlow v3.5</h3>
+        <p>智能锁 · 进度修复版</p>
         <button id="resume-btn">🔄 继续阅读</button>
         <p style="font-size:12px; color:#666; margin-top:15px;">或选择新书：</p>
         <input type="file" id="file-input" accept=".epub" style="font-size: 16px;">
+        <p class="tip-text">💡 提示：不想翻墙请在Edge语音设置里选"System"或"Huihui"等本地语音。</p>
     </div>
     <div id="viewer"></div>
     <div class="footer">
@@ -47,6 +50,7 @@
             <button id="prev-btn" class="nav-btn" disabled>⏮ 上一组</button>
             <button id="next-btn" class="nav-btn" disabled>下一组 ⏭</button>
         </div>
+        <div class="tip-text" style="margin-top:5px;">锁屏前请等待页面静止</div>
     </div>
     <div id="loading">处理中...</div>
 
@@ -55,8 +59,9 @@
         var currentStartIndex = 0; var BATCH_SIZE = 20;
         var observer = null;
         
-        // --- 核心修复：进度锁 ---
-        var isRestoring = false; // 是否正在恢复进度中
+        // --- v3.5 智能锁：默认为 false ---
+        // 只有点击“继续阅读”时才会变成 true，且只有跳转成功后才会解锁
+        var isProgressLocked = false; 
 
         localforage.config({ name: 'listenflow_db' });
 
@@ -122,10 +127,9 @@
                         var saved = localStorage.getItem('exactChapterIndex');
                         if (saved) {
                             startIndex = Math.floor(parseInt(saved) / BATCH_SIZE) * BATCH_SIZE;
-                            // 开启保护锁：正在恢复，禁止雷达乱写
-                            isRestoring = true;
-                            // 3秒后解锁，确保跳转完成
-                            setTimeout(() => { isRestoring = false; console.log("进度锁已解除"); }, 3000);
+                            // 🔒 开启智能锁：在跳转完成前，禁止保存任何进度！
+                            isProgressLocked = true;
+                            console.log("🔒 进度锁已开启，等待跳转...");
                         }
                     }
                     renderBatch(startIndex, isResume ? parseInt(localStorage.getItem('exactChapterIndex')) : null);
@@ -145,9 +149,10 @@
             var endIndex = Math.min(startIndex + BATCH_SIZE, spine.length);
             document.getElementById('page-info').innerText = `当前: 第 ${startIndex + 1} - ${endIndex} 章`;
 
+            // --- 观察者 ---
             observer = new IntersectionObserver((entries) => {
-                // 如果正在恢复进度中，直接无视，不许保存！
-                if (isRestoring) return;
+                // 🔒 如果锁着，绝对不许保存！
+                if (isProgressLocked) return;
 
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
@@ -205,9 +210,12 @@
             }
             showLoading(false);
 
+            // --- 滚动逻辑 ---
             let attempts = 0;
             function attemptScroll() {
                 let targetEl = null;
+                
+                // 恢复模式：找上次的章节
                 if (targetScrollIndex !== null) {
                     var container = document.getElementById('chapter-container-' + targetScrollIndex);
                     if (container) {
@@ -232,18 +240,29 @@
                     window.scrollBy(0, -80);
                     targetEl.classList.add('highlight-target');
                     
+                    // 暴力选中
                     try {
                         var range = document.createRange();
                         var selection = window.getSelection();
                         selection.removeAllRanges();
                         range.selectNodeContents(targetEl);
                         selection.addRange(range);
-                        targetEl.style.backgroundColor = "#b3d4fc";
-                        setTimeout(() => targetEl.style.backgroundColor = "transparent", 3000);
                     } catch (e) {}
 
-                } else if (attempts < 15) {
+                    // 🔓 解锁时刻：只有真正跳到了，才允许保存进度
+                    if (isProgressLocked) {
+                        // 稍微延迟一下，防止滚动过程中的惯性误触
+                        setTimeout(() => { 
+                            isProgressLocked = false; 
+                            console.log("🔓 进度锁已解除，开始记录");
+                        }, 1000);
+                    }
+
+                } else if (attempts < 20) { // 尝试次数加到20次
                     attempts++; setTimeout(attemptScroll, 200);
+                } else {
+                    // 超时没找到，也要强制解锁，否则永远不存了
+                    if (isProgressLocked) { isProgressLocked = false; }
                 }
             }
             attemptScroll();
@@ -265,7 +284,7 @@
             }
 
             if(targetIndex !== -1) {
-                // 手动跳转不需要保护锁，因为是用户主动行为
+                // 手动点击不用锁，直接跳
                 localStorage.setItem('exactChapterIndex', targetIndex);
                 var batchStart = Math.floor(targetIndex / BATCH_SIZE) * BATCH_SIZE;
                 renderBatch(batchStart, targetIndex, label);
