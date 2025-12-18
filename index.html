@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ListenFlow - v3.0</title>
+    <title>ListenFlow - v3.1</title>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.1.5/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
@@ -30,10 +30,10 @@
     </style>
 </head>
 <body>
-    <div class="header"><select id="toc-select" disabled><option>⏳ 引擎启动中...</option></select></div>
+    <div class="header"><select id="toc-select" disabled><option>⏳ 启动中...</option></select></div>
     <div class="upload-container" id="upload-area">
-        <h3>🚀 ListenFlow v3.0</h3>
-        <p>文字雷达定位版</p>
+        <h3>🚀 ListenFlow v3.1</h3>
+        <p>精准锁定版</p>
         <button id="resume-btn">🔄 继续阅读</button>
         <p style="font-size:12px; color:#666; margin-top:15px;">或选择新书：</p>
         <input type="file" id="file-input" accept=".epub" style="font-size: 16px;">
@@ -94,9 +94,6 @@
                             items.forEach(function(item) {
                                 var option = document.createElement('option');
                                 option.text = item.label.trim();
-                                
-                                // v3.0 逻辑：将 href 和 标题文字 都存进 value，用 | 分隔
-                                // 格式: "href|LabelName"
                                 option.value = item.href + "|" + item.label.trim();
                                 select.add(option);
                                 if (item.subitems) flatten(item.subitems);
@@ -106,7 +103,6 @@
                         select.onchange = function() {
                             if(this.value !== "-1") {
                                 var parts = this.value.split('|');
-                                // 传入 href 和 标题文字
                                 loadChapterByMatch(parts[0], parts[1]);
                             }
                         };
@@ -167,8 +163,7 @@
                         pText = pText.trim();
                         if (pText.length > 0) {
                             let el;
-                            // 标题检测逻辑：短文本 + 含关键字符
-                            if (!titleFound && pText.length < 60 && (pText.includes("第") || pText.includes("章") || pText.includes("Chapter") || pText.includes("Part"))) {
+                            if (!titleFound && pText.length < 60 && (pText.includes("第") || pText.includes("章") || pText.includes("Chapter"))) {
                                 el = document.createElement('h3');
                                 el.setAttribute('data-index', i);
                                 observer.observe(el);
@@ -188,40 +183,43 @@
             }
             showLoading(false);
 
-            // --- v3.0 文字雷达核心 ---
+            // --- v3.1 核心修复：限定搜索范围 ---
             let attempts = 0;
             function attemptScroll() {
                 let targetEl = null;
                 
-                // 1. 优先尝试：文字匹配 (Text Match)
-                // 只有当有明确目标文字时才搜
-                if (targetText) {
-                    // 遍历当前渲染的所有标题(h3)和段落(p)
-                    var allElements = document.getElementById('viewer').getElementsByTagName('*');
-                    for (var k = 0; k < allElements.length; k++) {
-                        // 模糊匹配：只要开头包含了标题的前5个字，就算匹配成功
-                        // 比如 TOC是"第八章 储蓄"，正文是"第八章 储蓄——支付自己"，这就能匹配上
-                        var cleanTarget = targetText.replace(/\s+/g, '').substring(0, 8); // 取前8个字去空格
-                        var cleanContent = allElements[k].innerText.replace(/\s+/g, '');
+                // 必须先找到对应的章节容器！
+                if (targetScrollIndex !== null) {
+                    var container = document.getElementById('chapter-container-' + targetScrollIndex);
+                    
+                    if (container) {
+                        // 1. 如果有文字目标，只在这个容器里找！
+                        // 绝对不许去别的容器（比如目录页）找
+                        if (targetText) {
+                            var allElements = container.getElementsByTagName('*');
+                            var cleanTarget = targetText.replace(/\s+/g, '').substring(0, 8);
+                            
+                            for (var k = 0; k < allElements.length; k++) {
+                                var cleanContent = allElements[k].innerText.replace(/\s+/g, '');
+                                if (cleanContent.includes(cleanTarget)) {
+                                    targetEl = allElements[k];
+                                    break;
+                                }
+                            }
+                        }
                         
-                        if (cleanContent.includes(cleanTarget)) {
-                            targetEl = allElements[k];
-                            break;
+                        // 2. 如果容器里没找到文字，就直接定位到容器顶部
+                        if (!targetEl) {
+                            targetEl = container;
                         }
                     }
-                }
-                
-                // 2. 如果文字没匹配到，退回到文件索引匹配
-                if (!targetEl && targetScrollIndex !== null) {
-                    targetEl = document.getElementById('chapter-container-' + targetScrollIndex);
                 }
 
                 if (targetEl) {
                     targetEl.scrollIntoView({ behavior: 'auto', block: 'start' });
-                    // 稍微往下一点，留出标题空间
                     window.scrollBy(0, -80);
                     targetEl.classList.add('highlight-target');
-                    targetEl.style.backgroundColor = "#ffe69c"; // 强制加个底色让人看到
+                    targetEl.style.backgroundColor = "#ffe69c";
                     setTimeout(() => targetEl.style.backgroundColor = "transparent", 2000);
                 } else if (attempts < 15) {
                     attempts++; setTimeout(attemptScroll, 200);
@@ -231,15 +229,13 @@
         }
 
         function loadChapterByMatch(href, label) {
-            // 1. 找到该章节属于第几个文件 (Index)
             var targetIndex = -1;
             
-            // 尝试官方 API
+            // 找 Index
             var spineItem = book.spine.get(href);
             if (spineItem) {
                 targetIndex = spineItem.index;
             } else {
-                // 备用：文件名匹配
                 var cleanHref = decodeURIComponent(href.split('#')[0]);
                 var targetName = cleanHref.split('/').pop();
                 for(var i=0; i<spine.length; i++) {
@@ -252,16 +248,9 @@
             if(targetIndex !== -1) {
                 localStorage.setItem('exactChapterIndex', targetIndex);
                 var batchStart = Math.floor(targetIndex / BATCH_SIZE) * BATCH_SIZE;
-                
-                if (currentStartIndex === batchStart) {
-                    // 已经在当前组，直接搜文字并跳转
-                    renderBatch(batchStart, targetIndex, label);
-                } else {
-                    // 切组，搜文字并跳转
-                    renderBatch(batchStart, targetIndex, label);
-                }
+                renderBatch(batchStart, targetIndex, label);
             } else {
-                alert("无法定位文件，请手动翻页");
+                alert("无法定位文件");
             }
         }
 
