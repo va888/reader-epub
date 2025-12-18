@@ -3,87 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ListenFlow - v2.9</title>
+    <title>ListenFlow - v3.0</title>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.1.5/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            margin: 0; padding: 0;
-            background-color: #f7f7f7; color: #333;
-            padding-bottom: 120px; padding-top: 60px;
-        }
-        .header {
-            position: fixed; top: 0; left: 0; right: 0;
-            height: 60px; background: #fff;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            display: flex; align-items: center; padding: 0 15px; z-index: 100;
-        }
-        #toc-select {
-            width: 100%; height: 40px; font-size: 16px;
-            border: 1px solid #ddd; border-radius: 8px;
-            background: #f9f9f9; padding-left: 10px;
-            -webkit-appearance: none; 
-        }
-        #viewer {
-            background: white; padding: 20px 20px;
-            min-height: 60vh; line-height: 1.8;
-            font-size: 20px; white-space: pre-wrap;
-        }
-        .chapter-divider {
-            border: 0; height: 1px;
-            background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0));
-            margin-top: 40px; margin-bottom: 40px;
-        }
-        @keyframes flash {
-            0% { background-color: #ffe69c; } 100% { background-color: transparent; }
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background-color: #f7f7f7; color: #333; padding-bottom: 120px; padding-top: 60px; }
+        .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; align-items: center; padding: 0 15px; z-index: 100; }
+        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; padding-left: 10px; -webkit-appearance: none; }
+        #viewer { background: white; padding: 20px 20px; min-height: 60vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; }
+        .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0)); margin-top: 40px; margin-bottom: 40px; }
+        @keyframes flash { 0% { background-color: #ffe69c; } 100% { background-color: transparent; } }
         .highlight-target { animation: flash 2s ease-out; }
         h3.current-reading { color: #d35400; border-left: 4px solid #d35400; padding-left: 10px; }
         p { margin-bottom: 24px; text-align: justify; }
         h1, h2, h3, h4 { color: #000; font-weight: bold; margin-bottom: 20px; }
-        .footer {
-            position: fixed; bottom: 0; left: 0; right: 0;
-            height: 100px; background: #fff;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-            display: flex; justify-content: center; align-items: center;
-            z-index: 100; flex-direction: column;
-        }
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 100px; background: #fff; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
         .control-group { display: flex; width: 100%; justify-content: space-around; align-items: center; }
-        .nav-btn {
-            width: 45%; height: 60px; border: none; border-radius: 12px;
-            font-size: 18px; font-weight: bold; color: white; cursor: pointer;
-        }
-        #prev-btn { background-color: #95a5a6; }
-        #next-btn { background-color: #0078D4; }
+        .nav-btn { width: 45%; height: 60px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; color: white; cursor: pointer; }
+        #prev-btn { background-color: #95a5a6; } #next-btn { background-color: #0078D4; }
         .nav-btn:disabled { opacity: 0.5; background-color: #ccc; }
         .status-tag { font-size: 12px; color: #999; margin-bottom: 8px; }
-        .upload-container {
-            padding: 20px; text-align: center; background: #eef;
-            margin-top: 20px; border-radius: 10px;
-        }
-        #resume-btn {
-            display: none; width: 100%; padding: 15px; margin-bottom: 15px;
-            background: #28a745; color: white; border: none; border-radius: 8px;
-            font-size: 16px; cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        #loading {
-            position: fixed; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.8); color: white;
-            padding: 20px; border-radius: 10px; display: none; z-index: 200;
-        }
+        .upload-container { padding: 20px; text-align: center; background: #eef; margin-top: 20px; border-radius: 10px; }
+        #resume-btn { display: none; width: 100%; padding: 15px; margin-bottom: 15px; background: #28a745; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 200; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <select id="toc-select" disabled><option>⏳ 目录解析中...</option></select>
-    </div>
+    <div class="header"><select id="toc-select" disabled><option>⏳ 引擎启动中...</option></select></div>
     <div class="upload-container" id="upload-area">
-        <h3>🚀 ListenFlow v2.9</h3>
-        <p>目录直连修复版</p>
+        <h3>🚀 ListenFlow v3.0</h3>
+        <p>文字雷达定位版</p>
         <button id="resume-btn">🔄 继续阅读</button>
         <p style="font-size:12px; color:#666; margin-top:15px;">或选择新书：</p>
         <input type="file" id="file-input" accept=".epub" style="font-size: 16px;">
@@ -135,78 +85,47 @@
             var reader = new FileReader();
             reader.onload = function(e) {
                 book = ePub(e.target.result);
-                
-                // 等待 spine 加载完成，因为我们需要查 index
                 book.loaded.spine.then(function(s) {
                     spine = s;
-                    
-                    // 加载目录
                     book.loaded.navigation.then(function(toc) {
                         var select = document.getElementById('toc-select');
                         select.innerHTML = '<option value="-1">📖 点击跳转...</option>';
-                        
-                        // 递归处理目录，把 href 直接换算成 index
                         var flatten = function(items) {
                             items.forEach(function(item) {
                                 var option = document.createElement('option');
                                 option.text = item.label.trim();
                                 
-                                // --- v2.9 核心黑科技：预先查找 Index ---
-                                var targetIndex = -1;
-                                
-                                // 方法1：直接问官方 API
-                                var spineItem = book.spine.get(item.href);
-                                if (spineItem) {
-                                    targetIndex = spineItem.index;
-                                } else {
-                                    // 方法2：如果官方失败，用文件名暴力查找
-                                    var cleanHref = decodeURIComponent(item.href.split('#')[0]);
-                                    var targetName = cleanHref.split('/').pop();
-                                    for(var i=0; i<spine.length; i++) {
-                                        if (decodeURIComponent(spine[i].href).indexOf(targetName) !== -1) {
-                                            targetIndex = i; break;
-                                        }
-                                    }
-                                }
-
-                                if (targetIndex !== -1) {
-                                    option.value = targetIndex; // 直接存数字！
-                                    select.add(option);
-                                } else {
-                                    // 没找到的章节暂时不显示，或者置灰
-                                    // console.warn("无法定位章节:", item.label);
-                                }
-                                
+                                // v3.0 逻辑：将 href 和 标题文字 都存进 value，用 | 分隔
+                                // 格式: "href|LabelName"
+                                option.value = item.href + "|" + item.label.trim();
+                                select.add(option);
                                 if (item.subitems) flatten(item.subitems);
                             });
                         };
-                        
-                        flatten(toc.toc);
-                        select.disabled = false;
-                        
-                        // 选择事件：直接拿数字去跳，稳准狠
+                        flatten(toc.toc); select.disabled = false;
                         select.onchange = function() {
-                            var idx = parseInt(this.value);
-                            if(idx >= 0) jumpToSpineIndex(idx);
+                            if(this.value !== "-1") {
+                                var parts = this.value.split('|');
+                                // 传入 href 和 标题文字
+                                loadChapterByMatch(parts[0], parts[1]);
+                            }
                         };
                     });
-
                     document.getElementById('upload-area').style.display = 'none';
                     document.getElementById('prev-btn').disabled = false;
                     document.getElementById('next-btn').disabled = false;
-                    
                     var startIndex = 0; 
                     if (isResume) {
                         var saved = localStorage.getItem('exactChapterIndex');
                         if (saved) startIndex = Math.floor(parseInt(saved) / BATCH_SIZE) * BATCH_SIZE;
                     }
-                    renderBatch(startIndex, isResume ? parseInt(localStorage.getItem('exactChapterIndex')) : null);
+                    renderBatch(startIndex, null, null);
                 });
             };
             reader.readAsArrayBuffer(data);
         }
 
-        async function renderBatch(startIndex, targetScrollIndex = null) {
+        async function renderBatch(startIndex, targetScrollIndex = null, targetText = null) {
             if (startIndex < 0 || startIndex >= spine.length) return;
             showLoading(true, "加载文本...");
             var viewer = document.getElementById('viewer');
@@ -237,7 +156,7 @@
                     let text = doc.innerText || doc.textContent;
                     let paragraphs = text.split(/\n+/);
                     let chapterDiv = document.createElement('div');
-                    chapterDiv.id = 'chapter-container-' + i; // 关键锚点
+                    chapterDiv.id = 'chapter-container-' + i;
                     
                     if (i > startIndex) {
                         let hr = document.createElement('hr'); hr.className = 'chapter-divider'; chapterDiv.appendChild(hr);
@@ -248,7 +167,8 @@
                         pText = pText.trim();
                         if (pText.length > 0) {
                             let el;
-                            if (!titleFound && pText.length < 50 && (pText.includes("第") || pText.includes("章"))) {
+                            // 标题检测逻辑：短文本 + 含关键字符
+                            if (!titleFound && pText.length < 60 && (pText.includes("第") || pText.includes("章") || pText.includes("Chapter") || pText.includes("Part"))) {
                                 el = document.createElement('h3');
                                 el.setAttribute('data-index', i);
                                 observer.observe(el);
@@ -268,41 +188,80 @@
             }
             showLoading(false);
 
-            // 雷达系统
-            if (targetScrollIndex !== null) {
-                let attempts = 0;
-                function attemptScroll() {
-                    let el = document.getElementById('chapter-container-' + targetScrollIndex);
-                    if (el) {
-                        el.scrollIntoView({ behavior: 'auto', block: 'start' });
-                        window.scrollBy(0, -70);
-                        el.classList.add('highlight-target');
-                    } else if (attempts < 15) {
-                        attempts++; setTimeout(attemptScroll, 200);
+            // --- v3.0 文字雷达核心 ---
+            let attempts = 0;
+            function attemptScroll() {
+                let targetEl = null;
+                
+                // 1. 优先尝试：文字匹配 (Text Match)
+                // 只有当有明确目标文字时才搜
+                if (targetText) {
+                    // 遍历当前渲染的所有标题(h3)和段落(p)
+                    var allElements = document.getElementById('viewer').getElementsByTagName('*');
+                    for (var k = 0; k < allElements.length; k++) {
+                        // 模糊匹配：只要开头包含了标题的前5个字，就算匹配成功
+                        // 比如 TOC是"第八章 储蓄"，正文是"第八章 储蓄——支付自己"，这就能匹配上
+                        var cleanTarget = targetText.replace(/\s+/g, '').substring(0, 8); // 取前8个字去空格
+                        var cleanContent = allElements[k].innerText.replace(/\s+/g, '');
+                        
+                        if (cleanContent.includes(cleanTarget)) {
+                            targetEl = allElements[k];
+                            break;
+                        }
                     }
                 }
-                attemptScroll();
-            } else { window.scrollTo(0, 0); }
+                
+                // 2. 如果文字没匹配到，退回到文件索引匹配
+                if (!targetEl && targetScrollIndex !== null) {
+                    targetEl = document.getElementById('chapter-container-' + targetScrollIndex);
+                }
+
+                if (targetEl) {
+                    targetEl.scrollIntoView({ behavior: 'auto', block: 'start' });
+                    // 稍微往下一点，留出标题空间
+                    window.scrollBy(0, -80);
+                    targetEl.classList.add('highlight-target');
+                    targetEl.style.backgroundColor = "#ffe69c"; // 强制加个底色让人看到
+                    setTimeout(() => targetEl.style.backgroundColor = "transparent", 2000);
+                } else if (attempts < 15) {
+                    attempts++; setTimeout(attemptScroll, 200);
+                }
+            }
+            attemptScroll();
         }
 
-        // 统一跳转入口
-        function jumpToSpineIndex(index) {
-            localStorage.setItem('exactChapterIndex', index);
-            var batchStart = Math.floor(index / BATCH_SIZE) * BATCH_SIZE;
+        function loadChapterByMatch(href, label) {
+            // 1. 找到该章节属于第几个文件 (Index)
+            var targetIndex = -1;
             
-            if (currentStartIndex === batchStart) {
-                // 在当前组，直接滚
-                var el = document.getElementById('chapter-container-' + index);
-                if (el) {
-                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    window.scrollBy(0, -70);
-                    el.classList.add('highlight-target');
+            // 尝试官方 API
+            var spineItem = book.spine.get(href);
+            if (spineItem) {
+                targetIndex = spineItem.index;
+            } else {
+                // 备用：文件名匹配
+                var cleanHref = decodeURIComponent(href.split('#')[0]);
+                var targetName = cleanHref.split('/').pop();
+                for(var i=0; i<spine.length; i++) {
+                    if (decodeURIComponent(spine[i].href).indexOf(targetName) !== -1) {
+                        targetIndex = i; break;
+                    }
+                }
+            }
+
+            if(targetIndex !== -1) {
+                localStorage.setItem('exactChapterIndex', targetIndex);
+                var batchStart = Math.floor(targetIndex / BATCH_SIZE) * BATCH_SIZE;
+                
+                if (currentStartIndex === batchStart) {
+                    // 已经在当前组，直接搜文字并跳转
+                    renderBatch(batchStart, targetIndex, label);
                 } else {
-                    renderBatch(batchStart, index);
+                    // 切组，搜文字并跳转
+                    renderBatch(batchStart, targetIndex, label);
                 }
             } else {
-                // 不在当前组，重载
-                renderBatch(batchStart, index);
+                alert("无法定位文件，请手动翻页");
             }
         }
 
