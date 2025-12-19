@@ -15,14 +15,14 @@
         .ver-tag { position: absolute; top: 5px; left: 5px; font-size: 10px; color: purple; font-weight: bold; z-index: 101; background: rgba(243, 229, 245, 0.5); padding: 2px 4px; border-radius: 4px; opacity: 0.6; }
         #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; background: #fdfbf7; padding-left: 10px; -webkit-appearance: none; color: #333; }
         
-        /* 📖 关键：使用 article 标签并确保显示为块级，诱导 Safari 识别 */
+        /* 📖 阅读容器 */
         article#viewer { background: #FAF6EF; padding: 20px 20px; min-height: 80vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; display: block; }
         
-        /* 🎯 调整：章节标题显著放大，加粗 */
+        /* 🎯 章节标题：超大、加粗、醒目 */
         h2 { 
             color: #000; 
-            font-weight: 900; /* 最粗 */
-            font-size: 2.0em; /* 字号加大 */
+            font-weight: 900; 
+            font-size: 2.2em; /* 字号加大到 2.2 倍 */
             margin-top: 40px; 
             margin-bottom: 20px; 
             line-height: 1.3; 
@@ -69,7 +69,9 @@
 
     <script>
         var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 10;
-        var TITLE_KEYWORDS = ["第", "章", "Chapter", "序", "前言", "Prologue", "Introduction", "卷", "部", "节"];
+        // 🔑 关键词必须非常全
+        var TITLE_KEYWORDS = ["第", "章", "Chapter", "序", "前言", "Prologue", "Introduction", "卷", "部", "节", "Part"];
+        // 🗑️ 垃圾词正则
         var JUNK_REGEX = /^(cover|unknown|未知|封面|title page|copyright|content|目录|前言|author|book|page)/i;
 
         localforage.config({ name: 'listenflow_db' });
@@ -135,35 +137,43 @@
                     chapterSection.id = 'chapter-' + i;
                     if (i > startIndex) { let hr = document.createElement('hr'); hr.className = 'chapter-divider'; chapterSection.appendChild(hr); }
                     
-                    let shownTitle = false, paraCount = 0, anchorSet = false;
-                    // ⚡️ 新增：记录上一行是不是标题，用于处理 "第6章" \n "抓住关键客户" 这种分行情况
-                    let lastWasTitle = false; 
+                    let foundFirstTitle = false; // 是否已经找到了第一个“正统”标题
+                    let paraCount = 0;
+                    let anchorSet = false;
+                    let lastWasTitle = false;
 
                     paragraphs.forEach(function(pText) {
                         pText = pText.replace(/[\u00a0\u200b\u3000]/g, ' ').trim();
                         if(!pText || JUNK_REGEX.test(pText)) return;
 
-                        var hasChapterKeyword = TITLE_KEYWORDS.some(k => pText.includes(k));
-                        // 稍微放宽标题长度限制到 60，适应 "Chapter 6 Catching Key Clients"
+                        var hasKeyword = TITLE_KEYWORDS.some(k => pText.includes(k));
                         var isShortLine = pText.length < 60 && !/[。.!！?？”"]$/.test(pText);
-                        
-                        // ⚡️ 核心改动 v4.16：
-                        // 1. 如果有关键字 -> 标题
-                        // 2. 如果还没有显示过标题，且是短行 -> 标题
-                        // 3. 关键：如果**上一行**刚判定为标题，且这一行也是短行 -> 标题（用于显示章节名！）
-                        var isTitle = (paraCount < 5 && (hasChapterKeyword || (!shownTitle && isShortLine) || (lastWasTitle && isShortLine)));
+
+                        // ⚡️ 核心过滤逻辑 v4.17
+                        // 1. 如果还没找到第一个正统标题，且这一行没有关键词 -> 视为书名残留，直接跳过！(杀掉 8020)
+                        if (!foundFirstTitle && !hasKeyword && paraCount < 5) {
+                            // 默默跳过，不渲染
+                            return; 
+                        }
+
+                        // 2. 标题判定：
+                        // - 必须有关键词（正统标题）
+                        // - 或者：上一行是标题，这一行也是短句（副标题，如"80/20法则..."）
+                        var isTitle = (hasKeyword || (lastWasTitle && isShortLine));
 
                         if (isTitle) {
                             let el = document.createElement('h2'); 
                             el.innerText = pText; el.setAttribute('data-index', i);
                             chapterSection.appendChild(el); 
-                            shownTitle = anchorSet = true;
-                            lastWasTitle = true; // 标记这一行是标题
+                            
+                            foundFirstTitle = true; // 标记：大标题已出现，后续短句可以是副标题了
+                            anchorSet = true;
+                            lastWasTitle = true;
                         } else {
                             let el = document.createElement('p'); el.innerText = pText;
                             if(!anchorSet) { el.setAttribute('data-index', i); anchorSet = true; }
                             chapterSection.appendChild(el);
-                            lastWasTitle = false; // 标记这一行是正文
+                            lastWasTitle = false;
                         }
                         paraCount++;
                     });
