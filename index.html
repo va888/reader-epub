@@ -8,57 +8,60 @@
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        /* 🎨 保持 v4.7 的暖米色高颜值 */
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background-color: #FAF6EF; color: #333; padding-bottom: 160px; padding-top: 60px; }
+        /* 🎨 终极视觉：Apple Books 暖米色 (#FAF6EF) */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background-color: #FAF6EF; color: #333; padding-bottom: 120px; padding-top: 60px; }
         :focus { outline: none; }
         
+        /* 顶部导航 */
         .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: #FAF6EF; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center; padding: 0 15px; z-index: 100; }
-        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 150px; background: #FAF6EF; box-shadow: 0 -5px 20px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
         
+        /* 底部控制栏 */
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 120px; background: #FAF6EF; box-shadow: 0 -5px 20px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
+        
+        /* 版本号 v4.13 */
         .ver-tag { position: absolute; top: 5px; left: 5px; font-size: 10px; color: purple; font-weight: bold; z-index: 101; background: rgba(243, 229, 245, 0.5); padding: 2px 4px; border-radius: 4px; opacity: 0.6; }
 
+        /* 目录下拉框 */
         #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; background: #fdfbf7; padding-left: 10px; -webkit-appearance: none; color: #333; }
         
-        #viewer { background: #FAF6EF; padding: 20px 20px; min-height: 60vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; }
+        /* 📖 阅读容器：使用 article 优化 Safari 朗读语义 */
+        article#viewer { background: #FAF6EF; padding: 20px 20px; min-height: 80vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; display: block; }
         
-        h3 { font-size: 1.4em; color: #000; font-weight: 800; margin-top: 10px; margin-bottom: 20px; line-height: 1.4; }
+        /* 标题与正文 */
+        h1, h2, h3 { color: #000; font-weight: 800; margin-top: 20px; margin-bottom: 20px; line-height: 1.4; text-align: left; }
+        p { margin-bottom: 24px; text-align: justify; }
         
-        p { margin-bottom: 24px; text-align: justify; padding: 8px; border-radius: 8px; transition: all 0.3s ease; border: 2px solid transparent; }
+        /* 分割线 */
+        .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0)); margin-top: 40px; margin-bottom: 40px; }
         
-        /* 💡 高亮样式：暖橙色背景 + 边框 */
-        p.active-reading { 
-            background-color: rgba(255, 165, 0, 0.15); 
-            border-color: #ffb74d;
-            box-shadow: 0 2px 8px rgba(255, 165, 0, 0.1);
-        }
+        /* 高亮动画 */
+        @keyframes flash { 0% { background-color: #ffe69c; } 100% { background-color: transparent; } }
+        .highlight-target { animation: flash 2s ease-out; }
 
-        .control-group { display: flex; width: 100%; justify-content: space-around; align-items: center; margin-bottom: 10px; }
-        .nav-btn { width: 40%; height: 45px; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; color: white; cursor: pointer; transition: opacity 0.2s; }
+        /* 按钮组 */
+        .control-group { display: flex; width: 100%; justify-content: space-around; align-items: center; }
+        .nav-btn { width: 45%; height: 55px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; color: white; cursor: pointer; transition: opacity 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         #prev-btn { background-color: #bdc3c7; color: #555; } 
         #next-btn { background-color: #3498db; }
-        
-        /* 播放控制区 */
-        .play-controls { display: flex; width: 90%; gap: 10px; }
-        #play-btn { flex: 1; height: 45px; background: #27ae60; color: white; border: none; border-radius: 25px; font-size: 16px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(39, 174, 96, 0.3); }
-        #play-btn.playing { background: #e74c3c; box-shadow: 0 4px 10px rgba(231, 76, 60, 0.3); }
-        
-        /* 声音切换按钮 */
-        #voice-btn { width: 45px; height: 45px; background: #f1f2f6; color: #333; border: 1px solid #ddd; border-radius: 50%; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .nav-btn:disabled { opacity: 0.3; }
+        .status-tag { font-size: 12px; color: #999; margin-bottom: 8px; text-align: center; }
 
+        /* 上传/加载界面 */
         .upload-container { padding: 40px 20px; text-align: center; margin-top: 40px; }
         #resume-btn { display: none; width: 80%; padding: 15px; margin: 0 auto 20px auto; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(39, 174, 96, 0.3); }
         #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 200; backdrop-filter: blur(5px); }
+        ::selection { background: #b3d4fc; color: #000; }
     </style>
 </head>
 <body>
     <div class="header">
-        <div class="ver-tag">v4.11</div>
+        <div class="ver-tag">v4.13</div>
         <select id="toc-select" disabled><option>⏳ 载入中...</option></select>
     </div>
 
     <div class="upload-container" id="upload-area">
         <h2 style="color:#333; margin-bottom: 10px;">EPUB阅读器</h2>
-        <p style="color:#999; font-size: 14px; margin-bottom: 30px;">纯净版 · 自动跟读</p>
+        <p style="color:#999; font-size: 14px; margin-bottom: 30px;">纯净版 · 黄金标准</p>
         <button id="resume-btn">🔄 继续阅读</button>
         <div style="margin-top: 20px;">
             <label for="file-input" style="color: #3498db; font-size: 16px; cursor: pointer; padding: 10px;">📂 打开新书</label>
@@ -66,16 +69,13 @@
         </div>
     </div>
 
-    <div id="viewer"></div>
+    <article id="viewer"></article>
 
     <div class="footer">
+        <div class="status-tag" id="page-info">等待书籍...</div>
         <div class="control-group">
             <button id="prev-btn" class="nav-btn" disabled>上一组</button>
             <button id="next-btn" class="nav-btn" disabled>下一组</button>
-        </div>
-        <div class="play-controls">
-            <button id="voice-btn" title="切换声音">🗣️</button>
-            <button id="play-btn" disabled>▶️ 开始朗读</button>
         </div>
     </div>
     <div id="loading">处理中...</div>
@@ -83,57 +83,21 @@
     <script>
         var book = null; var spine = [];
         var currentStartIndex = 0; 
-        var BATCH_SIZE = 20; 
+        // ⚡️ 最终决定：一次加载 10 章
+        var BATCH_SIZE = 10; 
         
         var JUNK_REGEX = /^(cover|unknown|未知|封面|title page|copyright|content|目录|前言)$/i;
         var TITLE_KEYWORDS = ["第", "章", "Chapter", "序", "前言", "Prologue", "Introduction", "卷", "部", "经历表"];
 
-        // 🔊 听书核心变量
-        var synth = window.speechSynthesis;
-        var readingQueue = [];
-        var currentParaIndex = 0;
-        var isPlaying = false;
-        var voices = [];
-        var selectedVoice = null;
-        var autoPlayAfterLoad = false; // 自动跟读开关
-
         localforage.config({ name: 'listenflow_db' });
 
         window.onload = function() { 
-            // 预加载声音
-            loadVoices();
-            if (speechSynthesis.onvoiceschanged !== undefined) {
-                speechSynthesis.onvoiceschanged = loadVoices;
-            }
-
             var loadTimeout = setTimeout(function() {
                 document.getElementById('upload-area').style.display = 'block';
                 document.getElementById('toc-select').innerHTML = '<option>⚠️ 请重新选书</option>';
             }, 3000);
             checkSavedBook(loadTimeout); 
         };
-
-        function loadVoices() {
-            voices = synth.getVoices();
-            // 🎯 声音猎人：优先找 Tingting, Siri, Enhanced
-            var bestVoice = voices.find(v => v.lang === 'zh-CN' && (v.name.includes('Tingting') || v.name.includes('Enhanced') || v.name.includes('Premium')));
-            if (!bestVoice) bestVoice = voices.find(v => v.lang === 'zh-CN');
-            if (bestVoice) selectedVoice = bestVoice;
-        }
-
-        // 切换声音按钮逻辑
-        document.getElementById('voice-btn').addEventListener('click', function() {
-            var zhVoices = voices.filter(v => v.lang.includes('zh'));
-            if(zhVoices.length > 0) {
-                var currentIdx = zhVoices.indexOf(selectedVoice);
-                var nextIdx = (currentIdx + 1) % zhVoices.length;
-                selectedVoice = zhVoices[nextIdx];
-                alert("已切换声音: " + selectedVoice.name);
-                if(isPlaying) { stopReading(); startReading(); } // 重启生效
-            } else {
-                alert("未找到中文语音包，请在系统设置中下载");
-            }
-        });
 
         function showLoading(show, text) {
             var el = document.getElementById('loading');
@@ -146,7 +110,9 @@
                 clearTimeout(timeoutId);
                 if (savedBook) {
                     var btn = document.getElementById('resume-btn');
-                    btn.innerText = "🔄 继续阅读"; btn.style.display = 'block';
+                    var lastIdx = localStorage.getItem('exactChapterIndex');
+                    var info = lastIdx ? ` (第 ${parseInt(lastIdx)+1} 章)` : "";
+                    btn.innerText = "🔄 继续阅读" + info; btn.style.display = 'block';
                     btn.onclick = function() { loadBookEngine(savedBook, true); };
                     document.getElementById('toc-select').innerHTML = '<option>✅ 书籍已就绪</option>';
                 } else {
@@ -186,8 +152,6 @@
                             select.onchange = function() {
                                 if(this.value !== "-1") {
                                     var parts = this.value.split('|');
-                                    // ⚡️ 开启自动跟读标记
-                                    autoPlayAfterLoad = true;
                                     loadChapterByMatch(parts[0], parts[1]);
                                 }
                             };
@@ -195,7 +159,6 @@
                         document.getElementById('upload-area').style.display = 'none';
                         document.getElementById('prev-btn').disabled = false;
                         document.getElementById('next-btn').disabled = false;
-                        document.getElementById('play-btn').disabled = false;
                         
                         var startIndex = 0; 
                         if (isResume) {
@@ -211,15 +174,13 @@
 
         async function renderBatch(startIndex, targetScrollIndex = null) {
             if (startIndex < 0 || startIndex >= spine.length) return;
-            
-            // 🛑 渲染前先停止之前的朗读
-            stopReading();
             showLoading(true, "排版中...");
-            
             var viewer = document.getElementById('viewer');
             viewer.innerHTML = ''; 
+
             currentStartIndex = startIndex;
             var endIndex = Math.min(startIndex + BATCH_SIZE, spine.length);
+            document.getElementById('page-info').innerText = `当前: 第 ${startIndex + 1} - ${endIndex} 章`;
 
             for (let i = startIndex; i < endIndex; i++) {
                 try {
@@ -236,9 +197,9 @@
                         let hr = document.createElement('hr'); hr.className = 'chapter-divider'; chapterDiv.appendChild(hr);
                     }
 
+                    // 🧹 智能标题去重逻辑
                     let titleAlreadyShown = false; 
                     let paraCount = 0;
-                    // ⚓️ 锚点标记
                     let anchorAttached = false; 
 
                     paragraphs.forEach(function(pText) {
@@ -250,6 +211,7 @@
 
                         if (pText.length > 0 && !isSymbolOnly && !isJunkWord) {
                             if (isLikelyTitle && !titleAlreadyShown) {
+                                // 发现本章第一个标题 -> 显示为 H3
                                 let el = document.createElement('h3');
                                 el.innerText = pText; 
                                 el.setAttribute('data-index', i); // 挂载锚点
@@ -257,12 +219,12 @@
                                 titleAlreadyShown = true; 
                                 anchorAttached = true;
                             } else if (isLikelyTitle && titleAlreadyShown) {
+                                // 发现重复标题 -> 跳过不显示
                                 return; 
                             } else {
+                                // 正文
                                 let el = document.createElement('p');
                                 el.innerText = pText; 
-                                // ✨ 加上这个类，让朗读器能找到
-                                el.className = 'readable-para';
                                 if (!anchorAttached) { el.setAttribute('data-index', i); anchorAttached = true; }
                                 chapterDiv.appendChild(el);
                             }
@@ -275,125 +237,21 @@
                          tracker.setAttribute('data-index', i);
                          chapterDiv.prepend(tracker);
                     }
+
                     if (chapterDiv.hasChildNodes()) viewer.appendChild(chapterDiv);
                 } catch (err) {}
             }
             showLoading(false);
 
-            // 处理跳转和自动播放
             if (targetScrollIndex !== null) {
                 setTimeout(() => {
                     var target = document.querySelector(`[data-index='${targetScrollIndex}']`);
                     if (target) {
                         target.scrollIntoView({ behavior: 'auto', block: 'start' });
                         window.scrollBy(0, -70); 
-                        
-                        // ⚡️ 核心逻辑：如果是目录跳转来的，直接开读！
-                        if (autoPlayAfterLoad) {
-                            startReading(target); 
-                            autoPlayAfterLoad = false; // 重置
-                        }
+                        target.classList.add('highlight-target'); 
                     }
                 }, 150);
-            }
-        }
-
-        // 🔊 朗读控制系统
-        var playBtn = document.getElementById('play-btn');
-        playBtn.addEventListener('click', toggleSpeech);
-
-        function toggleSpeech() {
-            if (isPlaying) stopReading();
-            else startReading();
-        }
-
-        function startReading(startElement = null) {
-            // 1. 收集所有可读段落
-            var paras = Array.from(document.querySelectorAll('.readable-para, h3'));
-            if (paras.length === 0) return;
-
-            // 2. 确定从哪里开始读
-            var startIdx = 0;
-            if (startElement) {
-                // 如果指定了开始元素（比如跳转过来的章节头），从那里开始
-                // 稍微往后找一点，找到最近的正文
-                let found = paras.indexOf(startElement);
-                if (found === -1) {
-                    // 如果传入的不是p/h3（比如div锚点），找它后面的第一个
-                    let container = startElement.parentElement;
-                    let allInContainer = Array.from(container.querySelectorAll('.readable-para'));
-                    if (allInContainer.length > 0) {
-                        startIdx = paras.indexOf(allInContainer[0]);
-                    }
-                } else {
-                    startIdx = found;
-                }
-            } else {
-                // 否则，从当前屏幕最上面那个开始读
-                for (let i = 0; i < paras.length; i++) {
-                    var rect = paras[i].getBoundingClientRect();
-                    if (rect.top >= 60 && rect.top < window.innerHeight) {
-                        startIdx = i; break;
-                    }
-                }
-            }
-
-            if (startIdx === -1) startIdx = 0;
-            readingQueue = paras.slice(startIdx);
-            currentParaIndex = 0;
-            isPlaying = true;
-            updatePlayButton();
-            
-            // 必须有一个微小的延时，否则iOS有时候会吞掉第一句
-            setTimeout(readNextPara, 100);
-        }
-
-        function readNextPara() {
-            if (!isPlaying || currentParaIndex >= readingQueue.length) {
-                stopReading(); return;
-            }
-
-            var p = readingQueue[currentParaIndex];
-            var text = p.innerText;
-
-            // 💡 高亮 + 滚动
-            document.querySelectorAll('.active-reading').forEach(el => el.classList.remove('active-reading'));
-            p.classList.add('active-reading');
-            p.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-            // 🗣️ 朗读
-            var utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'zh-CN'; 
-            if (selectedVoice) utterance.voice = selectedVoice;
-            
-            // 两个事件确保连贯
-            utterance.onend = function() {
-                currentParaIndex++;
-                readNextPara();
-            };
-            utterance.onerror = function(e) {
-                console.log("Speech Error", e);
-                currentParaIndex++; // 出错也跳下一个，别卡死
-                readNextPara();
-            };
-
-            synth.speak(utterance);
-        }
-
-        function stopReading() {
-            synth.cancel();
-            isPlaying = false;
-            document.querySelectorAll('.active-reading').forEach(el => el.classList.remove('active-reading'));
-            updatePlayButton();
-        }
-
-        function updatePlayButton() {
-            if (isPlaying) {
-                playBtn.innerText = "⏸️ 停止朗读";
-                playBtn.classList.add('playing');
-            } else {
-                playBtn.innerText = "▶️ 开始朗读";
-                playBtn.classList.remove('playing');
             }
         }
 
