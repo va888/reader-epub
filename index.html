@@ -18,17 +18,19 @@
         /* 📖 阅读容器 */
         article#viewer { background: #FAF6EF; padding: 20px 20px; min-height: 80vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; display: block; }
         
-        /* 🎯 章节标题：超大、加粗、醒目 */
+        /* 🎯 章节标题：超大、加粗 */
         h2 { 
             color: #000; 
             font-weight: 900; 
-            font-size: 2.2em; /* 字号加大到 2.2 倍 */
+            font-size: 2.2em; 
             margin-top: 40px; 
             margin-bottom: 20px; 
             line-height: 1.3; 
         }
         
-        p { margin-bottom: 24px; text-align: justify; outline: none; }
+        /* 📝 正文：确保回归正常字号 */
+        p { margin-bottom: 24px; text-align: justify; outline: none; font-size: 20px; font-weight: normal; }
+        
         .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0)); margin-top: 50px; margin-bottom: 50px; }
         @keyframes flash { 0% { background-color: #ffe69c; } 100% { background-color: transparent; } }
         .highlight-target { animation: flash 2s ease-out; }
@@ -69,9 +71,7 @@
 
     <script>
         var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 10;
-        // 🔑 关键词必须非常全
         var TITLE_KEYWORDS = ["第", "章", "Chapter", "序", "前言", "Prologue", "Introduction", "卷", "部", "节", "Part"];
-        // 🗑️ 垃圾词正则
         var JUNK_REGEX = /^(cover|unknown|未知|封面|title page|copyright|content|目录|前言|author|book|page)/i;
 
         localforage.config({ name: 'listenflow_db' });
@@ -137,7 +137,7 @@
                     chapterSection.id = 'chapter-' + i;
                     if (i > startIndex) { let hr = document.createElement('hr'); hr.className = 'chapter-divider'; chapterSection.appendChild(hr); }
                     
-                    let foundFirstTitle = false; // 是否已经找到了第一个“正统”标题
+                    let foundFirstTitle = false;
                     let paraCount = 0;
                     let anchorSet = false;
                     let lastWasTitle = false;
@@ -147,18 +147,16 @@
                         if(!pText || JUNK_REGEX.test(pText)) return;
 
                         var hasKeyword = TITLE_KEYWORDS.some(k => pText.includes(k));
-                        var isShortLine = pText.length < 60 && !/[。.!！?？”"]$/.test(pText);
+                        // ⚡️ 修正：长度限制收紧至 35，且严防标点符号
+                        var isShortLine = pText.length < 35 && !/[。.!！?？”"]$/.test(pText);
 
-                        // ⚡️ 核心过滤逻辑 v4.17
-                        // 1. 如果还没找到第一个正统标题，且这一行没有关键词 -> 视为书名残留，直接跳过！(杀掉 8020)
+                        // 杀掉书名废话
                         if (!foundFirstTitle && !hasKeyword && paraCount < 5) {
-                            // 默默跳过，不渲染
                             return; 
                         }
 
-                        // 2. 标题判定：
-                        // - 必须有关键词（正统标题）
-                        // - 或者：上一行是标题，这一行也是短句（副标题，如"80/20法则..."）
+                        // ⚡️ 标题判定 v4.18：
+                        // 副标题逻辑必须严格：只有上一行是标题，且这一行极短且无标点，才算副标题
                         var isTitle = (hasKeyword || (lastWasTitle && isShortLine));
 
                         if (isTitle) {
@@ -166,14 +164,14 @@
                             el.innerText = pText; el.setAttribute('data-index', i);
                             chapterSection.appendChild(el); 
                             
-                            foundFirstTitle = true; // 标记：大标题已出现，后续短句可以是副标题了
+                            foundFirstTitle = true; 
                             anchorSet = true;
                             lastWasTitle = true;
                         } else {
                             let el = document.createElement('p'); el.innerText = pText;
                             if(!anchorSet) { el.setAttribute('data-index', i); anchorSet = true; }
                             chapterSection.appendChild(el);
-                            lastWasTitle = false;
+                            lastWasTitle = false; // 阻断链条
                         }
                         paraCount++;
                     });
