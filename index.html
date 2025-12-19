@@ -3,55 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ListenFlow 纯净版 v4.13-Fix</title>
+    <title>ListenFlow v4.13-Final-Pro</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background-color: #FAF6EF; color: #333; padding-bottom: 120px; padding-top: 60px; }
-        :focus { outline: none; }
         .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: #FAF6EF; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center; padding: 0 15px; z-index: 100; }
-        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 100px; background: #FAF6EF; box-shadow: 0 -5px 20px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 110px; background: #FAF6EF; box-shadow: 0 -5px 20px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
         .ver-tag { position: absolute; top: 5px; left: 5px; font-size: 10px; color: purple; font-weight: bold; z-index: 101; background: rgba(243, 229, 245, 0.5); padding: 2px 4px; border-radius: 4px; opacity: 0.6; }
-        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; background: #fdfbf7; padding-left: 10px; -webkit-appearance: none; color: #333; }
+        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; background: #fdfbf7; padding-left: 10px; color: #333; }
         article#viewer { background: #FAF6EF; padding: 20px 20px; min-height: 80vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; display: block; }
-        h1, h2, h3 { color: #000; font-weight: 800; margin-top: 30px; margin-bottom: 20px; line-height: 1.4; text-align: left; }
+        h3 { font-size: 1.4em; color: #000; font-weight: 800; margin-top: 30px; margin-bottom: 20px; line-height: 1.4; }
         p { margin-bottom: 24px; text-align: justify; outline: none; }
-        .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0)); margin-top: 40px; margin-bottom: 40px; }
-        @keyframes flash { 0% { background-color: #ffe69c; } 100% { background-color: transparent; } }
-        .highlight-target { animation: flash 2s ease-out; }
-        .control-group { display: flex; width: 90%; justify-content: space-between; align-items: center; }
+        .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0,0,0,0), rgba(0,0,0,0.1), rgba(0,0,0,0)); margin: 40px 0; }
+        .control-group { display: flex; width: 90%; justify-content: space-between; }
         .nav-btn { width: 48%; height: 55px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; color: white; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         #prev-btn { background-color: #bdc3c7; color: #555; } 
         #next-btn { background-color: #3498db; }
         .nav-btn:disabled { opacity: 0.3; }
         .upload-container { padding: 40px 20px; text-align: center; margin-top: 40px; }
-        #resume-btn { display: none; width: 80%; padding: 15px; margin: 0 auto 20px auto; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; box-shadow: 0 4px 10px rgba(39, 174, 96, 0.3); }
+        #resume-btn { display: none; width: 80%; padding: 15px; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; }
         #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 200; }
+        @keyframes flash { 0% { background-color: #ffe69c; } 100% { background-color: transparent; } }
+        .highlight-target { animation: flash 2s ease-out; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="ver-tag">v4.13-EdgeFix</div>
-        <select id="toc-select" disabled><option>载入中...</option></select>
-    </div>
+    <header class="header">
+        <div class="ver-tag">v4.13-Pro</div>
+        <select id="toc-select" disabled><option>⏳ 载入中...</option></select>
+    </header>
+
     <div class="upload-container" id="upload-area">
-        <h2>EPUB阅读器</h2>
+        <h2>EPUB 阅读器</h2>
         <button id="resume-btn">🔄 继续阅读</button>
         <div style="margin-top: 20px;">
-            <label for="file-input" style="color: #3498db; cursor: pointer;">📂 打开书籍</label>
+            <label for="file-input" style="color: #3498db; cursor: pointer; font-size: 16px;">📂 打开书籍</label>
             <input type="file" id="file-input" style="display: none;">
         </div>
     </div>
-    <article id="viewer" role="article"></article>
-    <div class="footer">
+
+    <article id="viewer"></article>
+
+    <footer class="footer">
         <div id="page-info" style="font-size:12px; color:#999; margin-bottom:8px;"></div>
         <div class="control-group">
             <button id="prev-btn" class="nav-btn" disabled>上一组</button>
             <button id="next-btn" class="nav-btn" disabled>下一组</button>
         </div>
-    </div>
-    <div id="loading">...</div>
+    </footer>
+    <div id="loading">处理中...</div>
 
     <script>
         var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 10;
@@ -70,6 +72,7 @@
             var file = e.target.files[0]; if (!file) return;
             localforage.setItem('currentBook', file).then(() => loadBookEngine(file, false));
         };
+
         function loadBookEngine(data, isResume) {
             document.getElementById('loading').style.display = 'block';
             var reader = new FileReader();
@@ -99,21 +102,28 @@
                 });
             }; reader.readAsArrayBuffer(data);
         }
+
         async function renderBatch(startIndex, targetScrollIndex = null) {
             var viewer = document.getElementById('viewer'); viewer.innerHTML = '';
             currentStartIndex = startIndex;
             var endIndex = Math.min(startIndex + BATCH_SIZE, spine.length);
             document.getElementById('page-info').innerText = `第 ${startIndex + 1} - ${endIndex} 章`;
+
             for (let i = startIndex; i < endIndex; i++) {
                 try {
                     let section = spine.get(i);
                     let doc = await section.load(book.load.bind(book));
-                    doc.querySelectorAll('style, script, link, meta').forEach(item => item.remove());
-                    let paragraphs = doc.body.innerText.split(/\n+/);
+                    // 稳健的文本提取，防止白屏
+                    let docBody = doc.body || doc.documentElement;
+                    docBody.querySelectorAll('style, script, link, meta').forEach(item => item.remove());
+                    let text = docBody.innerText || docBody.textContent || "";
+                    let paragraphs = text.split(/\n+/);
+                    
                     let chapterDiv = document.createElement('div'); chapterDiv.id = 'chapter-container-' + i;
                     if (i > startIndex) { let hr = document.createElement('hr'); hr.className = 'chapter-divider'; chapterDiv.appendChild(hr); }
+                    
                     let shownTitle = false, paraCount = 0, anchorSet = false;
-                    paragraphs.forEach(function(pText) {
+                    paragraphs.forEach(pText => {
                         pText = pText.trim(); if(!pText) return;
                         var isTitle = (paraCount < 5 && pText.length < 50 && !/[。.!！?？”"]$/.test(pText)) || TITLE_KEYWORDS.some(k => pText.includes(k));
                         if (isTitle && !shownTitle) {
@@ -127,16 +137,18 @@
                         paraCount++;
                     });
                     viewer.appendChild(chapterDiv);
-                } catch (e) {}
+                } catch (e) { console.error("渲染章节失败", i, e); }
             }
             document.getElementById('loading').style.display = 'none';
+            
             if (targetScrollIndex !== null) {
                 setTimeout(() => {
                     var target = document.querySelector(`[data-index='${targetScrollIndex}']`);
                     if (target) {
                         target.scrollIntoView({ behavior: 'auto', block: 'start' }); window.scrollBy(0, -70);
                         target.classList.add('highlight-target');
-                        // ⚡️ 核心修复：强制焦点 + 模拟文本选中，诱导 Edge 语音光标跳转
+                        
+                        // 诱导安卓 Edge 跟随：强制焦点 + 选区重置
                         target.setAttribute('tabindex', '-1');
                         target.focus();
                         try {
@@ -144,9 +156,10 @@
                             range.selectNodeContents(target); sel.removeAllRanges(); sel.addRange(range);
                         } catch(err) {}
                     }
-                }, 250);
-            }
+                }, 300);
+            } else { window.scrollTo(0, 0); }
         }
+
         function loadChapterByMatch(href, label) {
             var targetName = decodeURIComponent(href.split('#')[0]).split('/').pop(), targetIndex = -1;
             for(var i=0; i<spine.length; i++) { if (decodeURIComponent(spine[i].href).indexOf(targetName) !== -1) { targetIndex = i; break; } }
