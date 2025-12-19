@@ -15,24 +15,17 @@
         .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: #FAF6EF; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center; padding: 0 15px; z-index: 100; }
         .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 120px; background: #FAF6EF; box-shadow: 0 -5px 20px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
         
-        /* 版本号 v4.8 */
+        /* 版本号 v4.6 (回滚版) */
         .ver-tag { position: absolute; top: 5px; left: 5px; font-size: 10px; color: purple; font-weight: bold; z-index: 101; background: rgba(243, 229, 245, 0.5); padding: 2px 4px; border-radius: 4px; opacity: 0.6; }
 
         #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; background: #fdfbf7; padding-left: 10px; -webkit-appearance: none; color: #333; }
-        
-        /* 📖 改用 article 标签，对 Safari 朗读更友好 */
-        article#viewer { background: #FAF6EF; padding: 20px 20px; min-height: 60vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; display: block; }
-        
+        #viewer { background: #FAF6EF; padding: 20px 20px; min-height: 60vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; }
         .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0)); margin-top: 40px; margin-bottom: 40px; }
         @keyframes flash { 0% { background-color: #ffe69c; } 100% { background-color: transparent; } }
         .highlight-target { animation: flash 2s ease-out; }
         
-        /* 标题样式 */
-        h3 { font-size: 1.4em; color: #000; font-weight: 800; margin-top: 10px; margin-bottom: 20px; line-height: 1.4; }
-        h3.current-reading { color: #d35400; border-left: 4px solid #d35400; padding-left: 10px; }
-
-        /* 🕵️‍♂️ 隐形定位点：不含文字，纯占位，防止 Safari 朗读报错 */
-        .tracker { width: 100%; height: 1px; opacity: 0; margin: 0; padding: 0; pointer-events: none; }
+        /* 🕵️‍♂️ 隐形锚点：看不见，但存在，用于欺骗系统定位 */
+        h3.tracker { font-size: 1px; color: transparent; height: 1px; margin: 0; padding: 0; border: none; overflow: hidden; }
 
         p { margin-bottom: 24px; text-align: justify; }
         
@@ -50,13 +43,13 @@
 </head>
 <body>
     <div class="header">
-        <div class="ver-tag">v4.8</div>
+        <div class="ver-tag">v4.6</div>
         <select id="toc-select" disabled><option>⏳ 载入中...</option></select>
     </div>
 
     <div class="upload-container" id="upload-area">
         <h2 style="color:#333; margin-bottom: 10px;">EPUB阅读器</h2>
-        <p style="color:#999; font-size: 14px; margin-bottom: 30px;">纯净版 · Safari 增强</p>
+        <p style="color:#999; font-size: 14px; margin-bottom: 30px;">纯净版 · 回滚测试</p>
         
         <button id="resume-btn">🔄 继续阅读</button>
 
@@ -68,7 +61,7 @@
         </div>
     </div>
 
-    <article id="viewer"></article>
+    <div id="viewer"></div>
 
     <div class="footer">
         <div class="status-tag" id="page-info">等待书籍...</div>
@@ -224,15 +217,15 @@
                         let hr = document.createElement('hr'); hr.className = 'chapter-divider'; chapterDiv.appendChild(hr);
                     }
 
-                    // 🥷 隐形定位点 v4.8：改用 div，无文字，骗过 Safari
-                    let tracker = document.createElement('div');
+                    // 🥷 隐形定位点 (v4.6 逻辑)
+                    let tracker = document.createElement('h3');
                     tracker.className = 'tracker';
                     tracker.setAttribute('data-index', i);
+                    tracker.innerText = `[${i}]`; // 包含微小文字以保证占位
                     observer.observe(tracker);
                     chapterDiv.appendChild(tracker);
                     if(!firstElement) firstElement = tracker;
 
-                    let titleAlreadyShown = false; 
                     let paraCount = 0;
 
                     paragraphs.forEach(function(pText) {
@@ -240,22 +233,15 @@
                         var isSymbolOnly = pText.replace(/[^\w\u4e00-\u9fa5]/g, '').length === 0;
                         var isJunkWord = (pText.length < 20 && JUNK_REGEX.test(pText));
                         
+                        // 简单的标题隐藏逻辑 (不显示在 Body 里)
                         var isPunctuationEnd = /[。.!！?？”"]$/.test(pText);
-                        var isLikelyTitle = (paraCount < 5 && pText.length < 50 && !isPunctuationEnd) || (pText.length < 40 && TITLE_KEYWORDS.some(k => pText.includes(k)));
+                        var isLikelyTitle = (paraCount < 5 && pText.length < 60 && !isPunctuationEnd);
 
                         if (pText.length > 0 && !isSymbolOnly && !isJunkWord) {
-                            
-                            if (isLikelyTitle && !titleAlreadyShown) {
-                                let el = document.createElement('h3');
-                                el.innerText = pText; 
-                                // 定位点由 div.tracker 承担，这里不需要挂 data-index 了
-                                chapterDiv.appendChild(el);
-                                titleAlreadyShown = true; 
-                            }
-                            else if (isLikelyTitle && titleAlreadyShown) {
-                                return; // 跳过重复标题
-                            }
-                            else {
+                            // 如果像标题，v4.6 的策略是：为了不重复，直接不显示（或者作为隐形点，但这里已经有隐形点了，所以直接跳过）
+                            if (isLikelyTitle) {
+                                // do nothing (hide)
+                            } else {
                                 let el = document.createElement('p');
                                 el.innerText = pText; 
                                 el.setAttribute('tabindex', '-1'); 
@@ -265,9 +251,7 @@
                         if (pText.length > 0) paraCount++;
                     });
                     
-                    if (chapterDiv.hasChildNodes()) {
-                        viewer.appendChild(chapterDiv);
-                    }
+                    viewer.appendChild(chapterDiv);
                 } catch (err) {}
             }
             showLoading(false);
@@ -278,8 +262,8 @@
                 if (targetScrollIndex !== null) {
                     var container = document.getElementById('chapter-container-' + targetScrollIndex);
                     if (container) {
-                         // 优先找 tracker (空 div)，因为它肯定在最前面
-                         targetEl = container.querySelector('.tracker');
+                         // 优先找 container 里的 tracker
+                         targetEl = container.querySelector('.tracker') || container.querySelector('p');
                     }
                 } else {
                     targetEl = firstElement;
@@ -288,7 +272,6 @@
                 if (targetEl) {
                     targetEl.scrollIntoView({ behavior: 'auto', block: 'start' });
                     window.scrollBy(0, -70);
-                    // 不再需要 highlight 动画给 tracker，因为它是透明的
                     if (isProgressLocked) {
                         setTimeout(() => { isProgressLocked = false; }, 1000);
                     }
