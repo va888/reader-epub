@@ -8,19 +8,30 @@
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background-color: #fff; color: #333; padding-bottom: 120px; padding-top: 60px; }
+        /* 🎨 主题色修改：Apple Books 风格暖米色背景 (#FAF6EF) */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background-color: #FAF6EF; color: #333; padding-bottom: 120px; padding-top: 60px; }
         :focus { outline: none; }
-        .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: #fff; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; padding: 0 15px; z-index: 100; }
         
-        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid #eee; border-radius: 8px; background: #f9f9f9; padding-left: 10px; -webkit-appearance: none; color: #333; }
-        #viewer { background: white; padding: 20px 20px; min-height: 60vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; }
+        /* 顶部和底部栏背景也同步调整 */
+        .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: #FAF6EF; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center; padding: 0 15px; z-index: 100; }
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 120px; background: #FAF6EF; box-shadow: 0 -5px 20px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
+        
+        /* 版本号标记 v4.5 */
+        .ver-tag { position: absolute; top: 5px; left: 5px; font-size: 10px; color: purple; font-weight: bold; z-index: 101; background: rgba(243, 229, 245, 0.5); padding: 2px 4px; border-radius: 4px; opacity: 0.6; }
+
+        /* 下拉框背景微调 */
+        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; background: #fdfbf7; padding-left: 10px; -webkit-appearance: none; color: #333; }
+        
+        /* 阅读区域背景微调 */
+        #viewer { background: #FAF6EF; padding: 20px 20px; min-height: 60vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; }
+        
         .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0)); margin-top: 40px; margin-bottom: 40px; }
         @keyframes flash { 0% { background-color: #ffe69c; } 100% { background-color: transparent; } }
         .highlight-target { animation: flash 2s ease-out; }
         h3.current-reading { color: #d35400; border-left: 4px solid #d35400; padding-left: 10px; }
         p { margin-bottom: 24px; text-align: justify; }
         h1, h2, h3, h4 { color: #000; font-weight: bold; margin-bottom: 20px; }
-        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 120px; background: #fff; box-shadow: 0 -5px 20px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
+        
         .control-group { display: flex; width: 100%; justify-content: space-around; align-items: center; }
         .nav-btn { width: 45%; height: 55px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; color: white; cursor: pointer; transition: opacity 0.2s; }
         #prev-btn { background-color: #bdc3c7; color: #555; } 
@@ -35,12 +46,13 @@
 </head>
 <body>
     <div class="header">
+        <div class="ver-tag">v4.5</div>
         <select id="toc-select" disabled><option>⏳ 载入中...</option></select>
     </div>
 
     <div class="upload-container" id="upload-area">
         <h2 style="color:#333; margin-bottom: 10px;">EPUB阅读器</h2>
-        <p style="color:#999; font-size: 14px; margin-bottom: 30px;">纯净版 · 稳定流畅</p>
+        <p style="color:#999; font-size: 14px; margin-bottom: 30px;">纯净版 · 完美复刻</p>
         
         <button id="resume-btn">🔄 继续阅读</button>
 
@@ -66,21 +78,18 @@
     <script>
         var book = null; var spine = [];
         var currentStartIndex = 0; 
-        
-        // 🔧 关键修改：一次只加载 5 章，防止手机内存崩溃
-        var BATCH_SIZE = 5; 
-        
+        // ⚡️ 性能调整：恢复为一次加载 20 章
+        var BATCH_SIZE = 20; 
         var observer = null;
         var isProgressLocked = false; 
         
-        // 🗑️ 垃圾词库
-        var JUNK_WORDS = ["cover", "unknown", "未知", "封面", "title page", "copyright", "content", "目录"];
+        var JUNK_REGEX = /^(cover|unknown|未知|封面|title page|copyright|content|目录|前言)$/i;
+        // 🆕 新增标题关键词，用于识别重复标题
+        var TITLE_KEYWORDS = ["第", "章", "Chapter", "序", "前言", "Prologue", "Introduction", "卷", "部"];
 
         localforage.config({ name: 'listenflow_db' });
 
         window.onload = function() { 
-            // 如果 3 秒没反应，才显示上传页。
-            // 如果是因为崩溃重启，这里会重新执行，用户自然看到上传页，符合逻辑。
             var loadTimeout = setTimeout(function() {
                 document.getElementById('upload-area').style.display = 'block';
                 document.getElementById('toc-select').innerHTML = '<option>⚠️ 请重新选书</option>';
@@ -200,15 +209,13 @@
                 try {
                     let section = spine.get(i);
                     let doc = await section.load(book.load.bind(book));
-
-                    // 1. 安全移除 CSS 代码 (防崩)
+                    
                     try {
                         var garbage = doc.querySelectorAll('style, script, link, meta');
                         garbage.forEach(function(item){ item.remove(); });
                     } catch(e) {}
 
                     let text = doc.body ? doc.body.innerText : (doc.textContent || "");
-                    
                     let paragraphs = text.split(/\n+/);
                     let chapterDiv = document.createElement('div');
                     chapterDiv.id = 'chapter-container-' + i;
@@ -217,21 +224,35 @@
                         let hr = document.createElement('hr'); hr.className = 'chapter-divider'; chapterDiv.appendChild(hr);
                     }
 
-                    let titleFound = false;
+                    // 🆕 智能去重逻辑：只允许每章出现一个主标题
+                    let titleAddedInThisChapter = false;
+                    
                     paragraphs.forEach(function(pText) {
-                        // 2. 去空格
                         pText = pText.replace(/[\u00a0\u200b\u3000]/g, ' ').trim();
-                        // 3. 强力过滤
-                        var hasContent = pText.replace(/[^\w\u4e00-\u9fa5]/g, '').length > 0;
+                        var isSymbolOnly = pText.replace(/[^\w\u4e00-\u9fa5]/g, '').length === 0;
+                        var isJunkWord = (pText.length < 20 && JUNK_REGEX.test(pText));
 
-                        if (pText.length > 0 && hasContent && !JUNK_WORDS.includes(pText.toLowerCase())) {
+                        if (pText.length > 0 && !isSymbolOnly && !isJunkWord) {
+                            // 判断是否像标题
+                            let isTitleLike = pText.length < 50 && TITLE_KEYWORDS.some(k => pText.includes(k));
+                            
                             let el;
-                            if (!titleFound && pText.length < 60 && (pText.includes("第") || pText.includes("章") || pText.includes("Chapter"))) {
+                            // 如果像标题，且本章还没添加过标题，就加为 H3
+                            if (isTitleLike && !titleAddedInThisChapter) {
                                 el = document.createElement('h3');
                                 el.setAttribute('data-index', i);
                                 observer.observe(el);
-                                titleFound = true;
-                            } else { el = document.createElement('p'); }
+                                titleAddedInThisChapter = true; // 标记本章已存在标题
+                            } 
+                            // 如果像标题，但本章已经有标题了，且这个标题很短，说明是重复的废话，直接跳过
+                            else if (isTitleLike && titleAddedInThisChapter && pText.length < 30) {
+                                return; // 跳过，不显示
+                            }
+                            // 其他情况都作为正文段落
+                            else { 
+                                el = document.createElement('p'); 
+                            }
+                            
                             el.innerText = pText; 
                             el.setAttribute('tabindex', '-1'); 
                             chapterDiv.appendChild(el);
@@ -239,10 +260,8 @@
                         }
                     });
                     
-                    // 只有当这一章真的有内容时才显示，防止空章占位
                     if (chapterDiv.hasChildNodes()) {
-                        if (!titleFound && !firstElement) {
-                             // 如果没有标题，至少加个隐藏锚点
+                        if (!titleAddedInThisChapter && !firstElement) {
                              let tracker = document.createElement('h3');
                              tracker.setAttribute('data-index', i); observer.observe(tracker);
                              tracker.style.cssText="font-size:1px;color:transparent;";
@@ -251,10 +270,7 @@
                         }
                         viewer.appendChild(chapterDiv);
                     }
-                    
-                } catch (err) {
-                    console.error("章节加载失败", i);
-                }
+                } catch (err) {}
             }
             showLoading(false);
 
