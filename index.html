@@ -12,9 +12,6 @@
         :focus { outline: none; }
         .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: #fff; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; padding: 0 15px; z-index: 100; }
         
-        /* 🔴 版本号标识 (调试用，确认更新成功) */
-        .ver-tag { position: absolute; top: 5px; left: 5px; font-size: 10px; color: red; font-weight: bold; z-index: 101; background: #ffe6e6; padding: 2px 4px; border-radius: 4px; }
-
         #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid #eee; border-radius: 8px; background: #f9f9f9; padding-left: 10px; -webkit-appearance: none; color: #333; }
         #viewer { background: white; padding: 20px 20px; min-height: 60vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; }
         .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0)); margin-top: 40px; margin-bottom: 40px; }
@@ -38,12 +35,12 @@
 </head>
 <body>
     <div class="header">
-        <div class="ver-tag">v4.2</div> <select id="toc-select" disabled><option>⏳ 载入中...</option></select>
+        <select id="toc-select" disabled><option>⏳ 载入中...</option></select>
     </div>
 
     <div class="upload-container" id="upload-area">
         <h2 style="color:#333; margin-bottom: 10px;">EPUB阅读器</h2>
-        <p style="color:#999; font-size: 14px; margin-bottom: 30px;">纯净版 · 强力净化</p>
+        <p style="color:#999; font-size: 14px; margin-bottom: 30px;">纯净版 · 稳定流畅</p>
         
         <button id="resume-btn">🔄 继续阅读</button>
 
@@ -68,19 +65,25 @@
 
     <script>
         var book = null; var spine = [];
-        var currentStartIndex = 0; var BATCH_SIZE = 20;
+        var currentStartIndex = 0; 
+        
+        // 🔧 关键修改：一次只加载 5 章，防止手机内存崩溃
+        var BATCH_SIZE = 5; 
+        
         var observer = null;
         var isProgressLocked = false; 
         
-        // 🗑️ 垃圾词库扩充
+        // 🗑️ 垃圾词库
         var JUNK_WORDS = ["cover", "unknown", "未知", "封面", "title page", "copyright", "content", "目录"];
 
         localforage.config({ name: 'listenflow_db' });
 
         window.onload = function() { 
+            // 如果 3 秒没反应，才显示上传页。
+            // 如果是因为崩溃重启，这里会重新执行，用户自然看到上传页，符合逻辑。
             var loadTimeout = setTimeout(function() {
                 document.getElementById('upload-area').style.display = 'block';
-                document.getElementById('toc-select').innerHTML = '<option>⚠️ 加载超时 (请重新选书)</option>';
+                document.getElementById('toc-select').innerHTML = '<option>⚠️ 请重新选书</option>';
             }, 3000);
             checkSavedBook(loadTimeout); 
         };
@@ -159,8 +162,8 @@
                         renderBatch(startIndex, isResume ? parseInt(localStorage.getItem('exactChapterIndex')) : null);
                     });
                 } catch (err) {
-                    alert("文件解析错误，请确认文件格式是否正确。");
                     showLoading(false);
+                    alert("书籍解析失败：可能是文件已损坏或格式不支持。");
                 }
             };
             reader.readAsArrayBuffer(data);
@@ -198,8 +201,11 @@
                     let section = spine.get(i);
                     let doc = await section.load(book.load.bind(book));
 
-                    var garbage = doc.querySelectorAll('style, script, link, meta');
-                    garbage.forEach(function(item){ item.remove(); });
+                    // 1. 安全移除 CSS 代码 (防崩)
+                    try {
+                        var garbage = doc.querySelectorAll('style, script, link, meta');
+                        garbage.forEach(function(item){ item.remove(); });
+                    } catch(e) {}
 
                     let text = doc.body ? doc.body.innerText : (doc.textContent || "");
                     
@@ -213,14 +219,11 @@
 
                     let titleFound = false;
                     paragraphs.forEach(function(pText) {
-                        // 1. 去空格
+                        // 2. 去空格
                         pText = pText.replace(/[\u00a0\u200b\u3000]/g, ' ').trim();
-                        
-                        // 2. 强力检查：是否只有标点符号 (比如那个 "-")
-                        // 如果这一行把汉字、字母、数字都删掉后，长度是0，说明全是符号，直接删
+                        // 3. 强力过滤
                         var hasContent = pText.replace(/[^\w\u4e00-\u9fa5]/g, '').length > 0;
 
-                        // 3. 核心判断：非空 + 有实质内容 + 不是垃圾词
                         if (pText.length > 0 && hasContent && !JUNK_WORDS.includes(pText.toLowerCase())) {
                             let el;
                             if (!titleFound && pText.length < 60 && (pText.includes("第") || pText.includes("章") || pText.includes("Chapter"))) {
@@ -235,15 +238,23 @@
                             if(!firstElement) firstElement = el;
                         }
                     });
-                    if (!titleFound) {
-                        let tracker = document.createElement('h3');
-                        tracker.innerText = `[${i}]`; tracker.style.cssText="font-size:1px;color:transparent;";
-                        tracker.setAttribute('data-index', i); observer.observe(tracker);
-                        chapterDiv.prepend(tracker);
-                        if(!firstElement) firstElement = tracker;
+                    
+                    // 只有当这一章真的有内容时才显示，防止空章占位
+                    if (chapterDiv.hasChildNodes()) {
+                        if (!titleFound && !firstElement) {
+                             // 如果没有标题，至少加个隐藏锚点
+                             let tracker = document.createElement('h3');
+                             tracker.setAttribute('data-index', i); observer.observe(tracker);
+                             tracker.style.cssText="font-size:1px;color:transparent;";
+                             chapterDiv.prepend(tracker);
+                             if(!firstElement) firstElement = tracker;
+                        }
+                        viewer.appendChild(chapterDiv);
                     }
-                    viewer.appendChild(chapterDiv);
-                } catch (err) {}
+                    
+                } catch (err) {
+                    console.error("章节加载失败", i);
+                }
             }
             showLoading(false);
 
@@ -327,6 +338,3 @@
     </script>
 </body>
 </html>
-
-
-
