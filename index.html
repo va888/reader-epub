@@ -8,26 +8,28 @@
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        /* 🎨 保持 Apple Books 暖米色风格 */
+        /* 🎨 视觉风格回归 v4.7：Apple Books 暖米色 */
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background-color: #FAF6EF; color: #333; padding-bottom: 120px; padding-top: 60px; }
         :focus { outline: none; }
         
         .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: #FAF6EF; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center; padding: 0 15px; z-index: 100; }
         .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 120px; background: #FAF6EF; box-shadow: 0 -5px 20px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
         
-        /* 版本号 v4.7 */
+        /* 版本号 v4.10 */
         .ver-tag { position: absolute; top: 5px; left: 5px; font-size: 10px; color: purple; font-weight: bold; z-index: 101; background: rgba(243, 229, 245, 0.5); padding: 2px 4px; border-radius: 4px; opacity: 0.6; }
 
         #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; background: #fdfbf7; padding-left: 10px; -webkit-appearance: none; color: #333; }
-        #viewer { background: #FAF6EF; padding: 20px 20px; min-height: 60vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; }
+        
+        /* 关键：使用 article 标签让 Safari 听书更容易识别 */
+        article#viewer { background: #FAF6EF; padding: 20px 20px; min-height: 60vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; display: block; }
+        
         .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0)); margin-top: 40px; margin-bottom: 40px; }
         @keyframes flash { 0% { background-color: #ffe69c; } 100% { background-color: transparent; } }
         .highlight-target { animation: flash 2s ease-out; }
         
-        /* 章节标题样式：加粗，大号，颜色深 */
+        /* 醒目标题样式 */
         h3 { font-size: 1.4em; color: #000; font-weight: 800; margin-top: 10px; margin-bottom: 20px; line-height: 1.4; }
-        h3.current-reading { color: #d35400; border-left: 4px solid #d35400; padding-left: 10px; }
-
+        
         p { margin-bottom: 24px; text-align: justify; }
         
         .control-group { display: flex; width: 100%; justify-content: space-around; align-items: center; }
@@ -44,25 +46,21 @@
 </head>
 <body>
     <div class="header">
-        <div class="ver-tag">v4.7</div>
+        <div class="ver-tag">v4.10</div>
         <select id="toc-select" disabled><option>⏳ 载入中...</option></select>
     </div>
 
     <div class="upload-container" id="upload-area">
         <h2 style="color:#333; margin-bottom: 10px;">EPUB阅读器</h2>
-        <p style="color:#999; font-size: 14px; margin-bottom: 30px;">纯净版 · 智能标题</p>
-        
+        <p style="color:#999; font-size: 14px; margin-bottom: 30px;">纯净版 · Safari增强</p>
         <button id="resume-btn">🔄 继续阅读</button>
-
         <div style="margin-top: 20px;">
-            <label for="file-input" style="color: #3498db; font-size: 16px; cursor: pointer; padding: 10px;">
-                📂 打开新书
-            </label>
+            <label for="file-input" style="color: #3498db; font-size: 16px; cursor: pointer; padding: 10px;">📂 打开新书</label>
             <input type="file" id="file-input" style="display: none;">
         </div>
     </div>
 
-    <div id="viewer"></div>
+    <article id="viewer"></article>
 
     <div class="footer">
         <div class="status-tag" id="page-info">等待书籍...</div>
@@ -77,11 +75,8 @@
         var book = null; var spine = [];
         var currentStartIndex = 0; 
         var BATCH_SIZE = 20; 
-        var observer = null;
-        var isProgressLocked = false; 
         
         var JUNK_REGEX = /^(cover|unknown|未知|封面|title page|copyright|content|目录|前言)$/i;
-        // 关键词库：用来判断是否是标题的“变体”
         var TITLE_KEYWORDS = ["第", "章", "Chapter", "序", "前言", "Prologue", "Introduction", "卷", "部", "经历表"];
 
         localforage.config({ name: 'listenflow_db' });
@@ -113,9 +108,7 @@
                 } else {
                     document.getElementById('toc-select').innerHTML = '<option>请打开书籍</option>';
                 }
-            } catch (err) {
-                console.log("Error", err); clearTimeout(timeoutId);
-            }
+            } catch (err) { console.log("Error", err); clearTimeout(timeoutId); }
         }
 
         document.getElementById('file-input').addEventListener('change', function(e) {
@@ -160,57 +153,30 @@
                         var startIndex = 0; 
                         if (isResume) {
                             var saved = localStorage.getItem('exactChapterIndex');
-                            if (saved) {
-                                startIndex = Math.floor(parseInt(saved) / BATCH_SIZE) * BATCH_SIZE;
-                                isProgressLocked = true;
-                            }
+                            if (saved) startIndex = Math.floor(parseInt(saved) / BATCH_SIZE) * BATCH_SIZE;
                         }
                         renderBatch(startIndex, isResume ? parseInt(localStorage.getItem('exactChapterIndex')) : null);
                     });
-                } catch (err) {
-                    showLoading(false);
-                    alert("书籍解析失败：可能是文件已损坏或格式不支持。");
-                }
+                } catch (err) { showLoading(false); alert("书籍解析失败"); }
             };
             reader.readAsArrayBuffer(data);
         }
 
-        async function renderBatch(startIndex, targetScrollIndex = null, targetText = null) {
+        async function renderBatch(startIndex, targetScrollIndex = null) {
             if (startIndex < 0 || startIndex >= spine.length) return;
             showLoading(true, "排版中...");
             var viewer = document.getElementById('viewer');
-            if (observer) observer.disconnect();
             viewer.innerHTML = ''; 
 
             currentStartIndex = startIndex;
             var endIndex = Math.min(startIndex + BATCH_SIZE, spine.length);
             document.getElementById('page-info').innerText = `当前: 第 ${startIndex + 1} - ${endIndex} 章`;
 
-            observer = new IntersectionObserver((entries) => {
-                if (isProgressLocked) return;
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        var idx = entry.target.getAttribute('data-index');
-                        if (idx) {
-                            localStorage.setItem('exactChapterIndex', idx);
-                            document.querySelectorAll('.current-reading').forEach(el => el.classList.remove('current-reading'));
-                            entry.target.classList.add('current-reading');
-                        }
-                    }
-                });
-            }, { threshold: 0.1 });
-
-            let firstElement = null;
-
             for (let i = startIndex; i < endIndex; i++) {
                 try {
                     let section = spine.get(i);
                     let doc = await section.load(book.load.bind(book));
-                    
-                    try {
-                        var garbage = doc.querySelectorAll('style, script, link, meta');
-                        garbage.forEach(function(item){ item.remove(); });
-                    } catch(e) {}
+                    try { doc.querySelectorAll('style, script, link, meta').forEach(item => item.remove()); } catch(e) {}
 
                     let text = doc.body ? doc.body.innerText : (doc.textContent || "");
                     let paragraphs = text.split(/\n+/);
@@ -221,114 +187,81 @@
                         let hr = document.createElement('hr'); hr.className = 'chapter-divider'; chapterDiv.appendChild(hr);
                     }
 
-                    // 🔥 核心修改：每章只允许 1 个显性标题
                     let titleAlreadyShown = false; 
                     let paraCount = 0;
+                    // 🛡️ 锚点保险丝：如果这一章的标题被当成废话删了，这个标记会变成 false，强迫下一个元素背上锚点
+                    let anchorAttached = false; 
 
                     paragraphs.forEach(function(pText) {
                         pText = pText.replace(/[\u00a0\u200b\u3000]/g, ' ').trim();
                         var isSymbolOnly = pText.replace(/[^\w\u4e00-\u9fa5]/g, '').length === 0;
                         var isJunkWord = (pText.length < 20 && JUNK_REGEX.test(pText));
                         
-                        // 判断是否“像”标题：
-                        // 1. 位于前 5 行
-                        // 2. 长度小于 50 字
-                        // 3. 不以常见句末标点结尾
-                        // 4. 或者包含特定的标题关键词
                         var isPunctuationEnd = /[。.!！?？”"]$/.test(pText);
                         var isLikelyTitle = (paraCount < 5 && pText.length < 50 && !isPunctuationEnd) || (pText.length < 40 && TITLE_KEYWORDS.some(k => pText.includes(k)));
 
-                        // 只有通过垃圾检测才处理
                         if (pText.length > 0 && !isSymbolOnly && !isJunkWord) {
                             
-                            // 逻辑 A：如果这是个像标题的东西，且本章还没显示过标题 -> 它是真标题，显示！
                             if (isLikelyTitle && !titleAlreadyShown) {
                                 let el = document.createElement('h3');
                                 el.innerText = pText; 
-                                el.setAttribute('data-index', i); // 定位点挂在这个真标题上
-                                observer.observe(el);
+                                // 🎯 这里打上锚点
+                                el.setAttribute('data-index', i); 
                                 chapterDiv.appendChild(el);
-                                if(!firstElement) firstElement = el;
-                                titleAlreadyShown = true; // 标记：大爷已经坐下了，后面的同类都别想坐
+                                titleAlreadyShown = true; 
+                                anchorAttached = true;
                             }
-                            // 逻辑 B：如果这是个像标题的东西，但本章已经有标题了 -> 它是重复废话，杀！
                             else if (isLikelyTitle && titleAlreadyShown) {
-                                // 隐形定位点：为了防止第一行被误杀导致无法定位，我们在被杀的地方留个魂
-                                if (!firstElement) {
-                                     let tracker = document.createElement('h3'); // 备用定位
-                                     tracker.style.cssText="font-size:1px;color:transparent;height:1px;margin:0;";
-                                     tracker.setAttribute('data-index', i); observer.observe(tracker);
-                                     chapterDiv.appendChild(tracker);
-                                     firstElement = tracker;
-                                }
-                                return; // 直接跳过渲染
+                                // 跳过重复标题
+                                return; 
                             }
-                            // 逻辑 C：正文
                             else {
                                 let el = document.createElement('p');
                                 el.innerText = pText; 
-                                el.setAttribute('tabindex', '-1'); 
-                                chapterDiv.appendChild(el);
-                                // 如果这一章开头全是废话被杀光了，第一句正文也可以作为定位点
-                                if (!firstElement && !titleAlreadyShown) {
-                                    el.setAttribute('data-index', i); observer.observe(el);
-                                    firstElement = el;
+                                // 🛡️ 如果标题被跳过了，或者没有标题，第一个正文必须背上锚点，否则无法跳转
+                                if (!anchorAttached) {
+                                    el.setAttribute('data-index', i);
+                                    anchorAttached = true;
                                 }
+                                chapterDiv.appendChild(el);
                             }
                         }
                         if (pText.length > 0) paraCount++;
                     });
                     
-                    // 兜底：如果这一章啥都没显示（极少情况），补一个隐形点防止报错
+                    // 兜底：全是废话，啥都没显示？加个空div兜底
+                    if (!anchorAttached) {
+                         let tracker = document.createElement('div');
+                         tracker.setAttribute('data-index', i);
+                         chapterDiv.prepend(tracker);
+                    }
+
                     if (chapterDiv.hasChildNodes()) {
-                         if (!firstElement) {
-                             let tracker = document.createElement('h3');
-                             tracker.setAttribute('data-index', i); observer.observe(tracker);
-                             tracker.style.cssText="font-size:1px;color:transparent;";
-                             chapterDiv.prepend(tracker);
-                             if(!firstElement) firstElement = tracker;
-                         }
                         viewer.appendChild(chapterDiv);
                     }
                 } catch (err) {}
             }
             showLoading(false);
 
-            let attempts = 0;
-            function attemptScroll() {
-                let targetEl = null;
-                if (targetScrollIndex !== null) {
-                    var container = document.getElementById('chapter-container-' + targetScrollIndex);
-                    if (container) {
-                         // 优先找 container 里的 h3 (标题)，没有就找 p
-                         targetEl = container.querySelector('h3') || container.querySelector('p');
+            if (targetScrollIndex !== null) {
+                // 🛠️ 修复跳转：延迟执行，确保渲染完毕
+                setTimeout(() => {
+                    // 在整个页面里找 [data-index="xx"]
+                    var target = document.querySelector(`[data-index='${targetScrollIndex}']`);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'auto', block: 'start' });
+                        window.scrollBy(0, -70); // 避开顶部栏
+                        target.classList.add('highlight-target'); // 闪烁一下
                     }
-                } else {
-                    targetEl = firstElement;
-                }
-
-                if (targetEl) {
-                    targetEl.scrollIntoView({ behavior: 'auto', block: 'start' });
-                    window.scrollBy(0, -70);
-                    targetEl.classList.add('highlight-target'); // 闪烁一下提醒
-                    if (isProgressLocked) {
-                        setTimeout(() => { isProgressLocked = false; }, 1000);
-                    }
-                } else if (attempts < 20) {
-                    attempts++; setTimeout(attemptScroll, 200);
-                } else {
-                    if (isProgressLocked) isProgressLocked = false;
-                }
+                }, 150);
             }
-            attemptScroll();
         }
 
         function loadChapterByMatch(href, label) {
             var targetIndex = -1;
             var spineItem = book.spine.get(href);
-            if (spineItem) {
-                targetIndex = spineItem.index;
-            } else {
+            if (spineItem) { targetIndex = spineItem.index; } 
+            else {
                 var cleanHref = decodeURIComponent(href.split('#')[0]);
                 var targetName = cleanHref.split('/').pop();
                 for(var i=0; i<spine.length; i++) {
@@ -340,10 +273,8 @@
             if(targetIndex !== -1) {
                 localStorage.setItem('exactChapterIndex', targetIndex);
                 var batchStart = Math.floor(targetIndex / BATCH_SIZE) * BATCH_SIZE;
-                renderBatch(batchStart, targetIndex, label);
-            } else {
-                alert("无法定位文件");
-            }
+                renderBatch(batchStart, targetIndex);
+            } else { alert("无法定位文件"); }
         }
 
         document.getElementById('prev-btn').addEventListener('click', function() {
