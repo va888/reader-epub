@@ -8,57 +8,56 @@
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        /* 🎨 Apple Books 暖米色背景 */
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background-color: #FAF6EF; color: #333; padding-bottom: 140px; padding-top: 60px; }
+        /* 🎨 保持 Apple Books 暖米色风格 */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background-color: #FAF6EF; color: #333; padding-bottom: 120px; padding-top: 60px; }
         :focus { outline: none; }
         
         .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: #FAF6EF; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center; padding: 0 15px; z-index: 100; }
-        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 130px; background: #FAF6EF; box-shadow: 0 -5px 20px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 120px; background: #FAF6EF; box-shadow: 0 -5px 20px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
         
-        /* 版本号 v4.9 */
+        /* 版本号 v4.7 */
         .ver-tag { position: absolute; top: 5px; left: 5px; font-size: 10px; color: purple; font-weight: bold; z-index: 101; background: rgba(243, 229, 245, 0.5); padding: 2px 4px; border-radius: 4px; opacity: 0.6; }
 
         #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; background: #fdfbf7; padding-left: 10px; -webkit-appearance: none; color: #333; }
         #viewer { background: #FAF6EF; padding: 20px 20px; min-height: 60vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; }
+        .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0)); margin-top: 40px; margin-bottom: 40px; }
+        @keyframes flash { 0% { background-color: #ffe69c; } 100% { background-color: transparent; } }
+        .highlight-target { animation: flash 2s ease-out; }
         
-        /* 🕵️‍♂️ 隐形锚点 (保持 v4.6 的稳定结构) */
-        h3.tracker { font-size: 1px; color: transparent; height: 1px; margin: 0; padding: 0; border: none; overflow: hidden; }
+        /* 章节标题样式：加粗，大号，颜色深 */
+        h3 { font-size: 1.4em; color: #000; font-weight: 800; margin-top: 10px; margin-bottom: 20px; line-height: 1.4; }
+        h3.current-reading { color: #d35400; border-left: 4px solid #d35400; padding-left: 10px; }
 
-        p { margin-bottom: 24px; text-align: justify; transition: background 0.3s; border-radius: 8px; padding: 5px; }
+        p { margin-bottom: 24px; text-align: justify; }
         
-        /* 🟠 正在朗读的高亮样式 - 醒目的橙色边框和微背景 */
-        p.active-reading { 
-            background-color: rgba(255, 165, 0, 0.15); 
-            border-left: 4px solid #ff8c00; 
-            color: #000;
-        }
-
-        .control-group { display: flex; width: 100%; justify-content: space-around; align-items: center; margin-bottom: 10px; }
-        .nav-btn { width: 40%; height: 45px; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; color: white; cursor: pointer; transition: opacity 0.2s; }
+        .control-group { display: flex; width: 100%; justify-content: space-around; align-items: center; }
+        .nav-btn { width: 45%; height: 55px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; color: white; cursor: pointer; transition: opacity 0.2s; }
         #prev-btn { background-color: #bdc3c7; color: #555; } 
         #next-btn { background-color: #3498db; }
-        
-        /* 🔊 听书按钮 */
-        #play-btn { width: 90%; height: 45px; background: #27ae60; color: white; border: none; border-radius: 25px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(39, 174, 96, 0.3); }
-        #play-btn.playing { background: #e74c3c; box-shadow: 0 4px 10px rgba(231, 76, 60, 0.3); }
-
+        .nav-btn:disabled { opacity: 0.3; }
+        .status-tag { font-size: 12px; color: #999; margin-bottom: 8px; text-align: center; }
         .upload-container { padding: 40px 20px; text-align: center; margin-top: 40px; }
         #resume-btn { display: none; width: 80%; padding: 15px; margin: 0 auto 20px auto; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(39, 174, 96, 0.3); }
         #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 200; backdrop-filter: blur(5px); }
+        ::selection { background: #b3d4fc; color: #000; }
     </style>
 </head>
 <body>
     <div class="header">
-        <div class="ver-tag">v4.9</div>
+        <div class="ver-tag">v4.7</div>
         <select id="toc-select" disabled><option>⏳ 载入中...</option></select>
     </div>
 
     <div class="upload-container" id="upload-area">
         <h2 style="color:#333; margin-bottom: 10px;">EPUB阅读器</h2>
-        <p style="color:#999; font-size: 14px; margin-bottom: 30px;">纯净版 · 听书同步</p>
+        <p style="color:#999; font-size: 14px; margin-bottom: 30px;">纯净版 · 智能标题</p>
+        
         <button id="resume-btn">🔄 继续阅读</button>
+
         <div style="margin-top: 20px;">
-            <label for="file-input" style="color: #3498db; font-size: 16px; cursor: pointer; padding: 10px;">📂 打开新书</label>
+            <label for="file-input" style="color: #3498db; font-size: 16px; cursor: pointer; padding: 10px;">
+                📂 打开新书
+            </label>
             <input type="file" id="file-input" style="display: none;">
         </div>
     </div>
@@ -66,11 +65,11 @@
     <div id="viewer"></div>
 
     <div class="footer">
+        <div class="status-tag" id="page-info">等待书籍...</div>
         <div class="control-group">
             <button id="prev-btn" class="nav-btn" disabled>上一组</button>
             <button id="next-btn" class="nav-btn" disabled>下一组</button>
         </div>
-        <button id="play-btn" disabled>▶️ 开启听书 (Sync)</button>
     </div>
     <div id="loading">处理中...</div>
 
@@ -79,14 +78,11 @@
         var currentStartIndex = 0; 
         var BATCH_SIZE = 20; 
         var observer = null;
+        var isProgressLocked = false; 
         
         var JUNK_REGEX = /^(cover|unknown|未知|封面|title page|copyright|content|目录|前言)$/i;
-
-        // 🔊 听书相关变量
-        var synth = window.speechSynthesis;
-        var readingQueue = [];
-        var currentParaIndex = 0;
-        var isPlaying = false;
+        // 关键词库：用来判断是否是标题的“变体”
+        var TITLE_KEYWORDS = ["第", "章", "Chapter", "序", "前言", "Prologue", "Introduction", "卷", "部", "经历表"];
 
         localforage.config({ name: 'listenflow_db' });
 
@@ -109,13 +105,17 @@
                 clearTimeout(timeoutId);
                 if (savedBook) {
                     var btn = document.getElementById('resume-btn');
-                    btn.innerText = "🔄 继续阅读"; btn.style.display = 'block';
+                    var lastIdx = localStorage.getItem('exactChapterIndex');
+                    var info = lastIdx ? ` (第 ${parseInt(lastIdx)+1} 章)` : "";
+                    btn.innerText = "🔄 继续阅读" + info; btn.style.display = 'block';
                     btn.onclick = function() { loadBookEngine(savedBook, true); };
                     document.getElementById('toc-select').innerHTML = '<option>✅ 书籍已就绪</option>';
                 } else {
                     document.getElementById('toc-select').innerHTML = '<option>请打开书籍</option>';
                 }
-            } catch (err) { console.log("Error", err); clearTimeout(timeoutId); }
+            } catch (err) {
+                console.log("Error", err); clearTimeout(timeoutId);
+            }
         }
 
         document.getElementById('file-input').addEventListener('change', function(e) {
@@ -156,37 +156,62 @@
                         document.getElementById('upload-area').style.display = 'none';
                         document.getElementById('prev-btn').disabled = false;
                         document.getElementById('next-btn').disabled = false;
-                        document.getElementById('play-btn').disabled = false;
                         
                         var startIndex = 0; 
                         if (isResume) {
                             var saved = localStorage.getItem('exactChapterIndex');
-                            if (saved) startIndex = Math.floor(parseInt(saved) / BATCH_SIZE) * BATCH_SIZE;
+                            if (saved) {
+                                startIndex = Math.floor(parseInt(saved) / BATCH_SIZE) * BATCH_SIZE;
+                                isProgressLocked = true;
+                            }
                         }
                         renderBatch(startIndex, isResume ? parseInt(localStorage.getItem('exactChapterIndex')) : null);
                     });
-                } catch (err) { alert("书籍解析失败"); showLoading(false); }
+                } catch (err) {
+                    showLoading(false);
+                    alert("书籍解析失败：可能是文件已损坏或格式不支持。");
+                }
             };
             reader.readAsArrayBuffer(data);
         }
 
-        async function renderBatch(startIndex, targetScrollIndex = null) {
+        async function renderBatch(startIndex, targetScrollIndex = null, targetText = null) {
             if (startIndex < 0 || startIndex >= spine.length) return;
             showLoading(true, "排版中...");
-            
-            // 🛑 翻页时停止之前的朗读
-            stopReading();
-
             var viewer = document.getElementById('viewer');
+            if (observer) observer.disconnect();
             viewer.innerHTML = ''; 
+
             currentStartIndex = startIndex;
             var endIndex = Math.min(startIndex + BATCH_SIZE, spine.length);
+            document.getElementById('page-info').innerText = `当前: 第 ${startIndex + 1} - ${endIndex} 章`;
+
+            observer = new IntersectionObserver((entries) => {
+                if (isProgressLocked) return;
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        var idx = entry.target.getAttribute('data-index');
+                        if (idx) {
+                            localStorage.setItem('exactChapterIndex', idx);
+                            document.querySelectorAll('.current-reading').forEach(el => el.classList.remove('current-reading'));
+                            entry.target.classList.add('current-reading');
+                        }
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            let firstElement = null;
 
             for (let i = startIndex; i < endIndex; i++) {
                 try {
                     let section = spine.get(i);
                     let doc = await section.load(book.load.bind(book));
-                    try { doc.querySelectorAll('style, script, link, meta').forEach(item => item.remove()); } catch(e) {}
+                    
+                    try {
+                        var garbage = doc.querySelectorAll('style, script, link, meta');
+                        garbage.forEach(function(item){ item.remove(); });
+                    } catch(e) {}
+
                     let text = doc.body ? doc.body.innerText : (doc.textContent || "");
                     let paragraphs = text.split(/\n+/);
                     let chapterDiv = document.createElement('div');
@@ -195,123 +220,139 @@
                     if (i > startIndex) {
                         let hr = document.createElement('hr'); hr.className = 'chapter-divider'; chapterDiv.appendChild(hr);
                     }
-                    
-                    let tracker = document.createElement('h3'); tracker.className = 'tracker'; tracker.setAttribute('data-index', i); tracker.innerText = `[${i}]`;
-                    chapterDiv.appendChild(tracker);
 
+                    // 🔥 核心修改：每章只允许 1 个显性标题
+                    let titleAlreadyShown = false; 
                     let paraCount = 0;
+
                     paragraphs.forEach(function(pText) {
                         pText = pText.replace(/[\u00a0\u200b\u3000]/g, ' ').trim();
-                        var isLikelyTitle = (paraCount < 5 && pText.length < 60 && !/[。.!！?？”"]$/.test(pText));
+                        var isSymbolOnly = pText.replace(/[^\w\u4e00-\u9fa5]/g, '').length === 0;
+                        var isJunkWord = (pText.length < 20 && JUNK_REGEX.test(pText));
                         
-                        if (pText.length > 0 && !isLikelyTitle) {
-                            let el = document.createElement('p');
-                            el.innerText = pText; 
-                            // ✨ 给每个段落加个标记，方便朗读抓取
-                            el.className = 'readable-para';
-                            chapterDiv.appendChild(el);
+                        // 判断是否“像”标题：
+                        // 1. 位于前 5 行
+                        // 2. 长度小于 50 字
+                        // 3. 不以常见句末标点结尾
+                        // 4. 或者包含特定的标题关键词
+                        var isPunctuationEnd = /[。.!！?？”"]$/.test(pText);
+                        var isLikelyTitle = (paraCount < 5 && pText.length < 50 && !isPunctuationEnd) || (pText.length < 40 && TITLE_KEYWORDS.some(k => pText.includes(k)));
+
+                        // 只有通过垃圾检测才处理
+                        if (pText.length > 0 && !isSymbolOnly && !isJunkWord) {
+                            
+                            // 逻辑 A：如果这是个像标题的东西，且本章还没显示过标题 -> 它是真标题，显示！
+                            if (isLikelyTitle && !titleAlreadyShown) {
+                                let el = document.createElement('h3');
+                                el.innerText = pText; 
+                                el.setAttribute('data-index', i); // 定位点挂在这个真标题上
+                                observer.observe(el);
+                                chapterDiv.appendChild(el);
+                                if(!firstElement) firstElement = el;
+                                titleAlreadyShown = true; // 标记：大爷已经坐下了，后面的同类都别想坐
+                            }
+                            // 逻辑 B：如果这是个像标题的东西，但本章已经有标题了 -> 它是重复废话，杀！
+                            else if (isLikelyTitle && titleAlreadyShown) {
+                                // 隐形定位点：为了防止第一行被误杀导致无法定位，我们在被杀的地方留个魂
+                                if (!firstElement) {
+                                     let tracker = document.createElement('h3'); // 备用定位
+                                     tracker.style.cssText="font-size:1px;color:transparent;height:1px;margin:0;";
+                                     tracker.setAttribute('data-index', i); observer.observe(tracker);
+                                     chapterDiv.appendChild(tracker);
+                                     firstElement = tracker;
+                                }
+                                return; // 直接跳过渲染
+                            }
+                            // 逻辑 C：正文
+                            else {
+                                let el = document.createElement('p');
+                                el.innerText = pText; 
+                                el.setAttribute('tabindex', '-1'); 
+                                chapterDiv.appendChild(el);
+                                // 如果这一章开头全是废话被杀光了，第一句正文也可以作为定位点
+                                if (!firstElement && !titleAlreadyShown) {
+                                    el.setAttribute('data-index', i); observer.observe(el);
+                                    firstElement = el;
+                                }
+                            }
                         }
                         if (pText.length > 0) paraCount++;
                     });
-                    viewer.appendChild(chapterDiv);
+                    
+                    // 兜底：如果这一章啥都没显示（极少情况），补一个隐形点防止报错
+                    if (chapterDiv.hasChildNodes()) {
+                         if (!firstElement) {
+                             let tracker = document.createElement('h3');
+                             tracker.setAttribute('data-index', i); observer.observe(tracker);
+                             tracker.style.cssText="font-size:1px;color:transparent;";
+                             chapterDiv.prepend(tracker);
+                             if(!firstElement) firstElement = tracker;
+                         }
+                        viewer.appendChild(chapterDiv);
+                    }
                 } catch (err) {}
             }
             showLoading(false);
-            
-            if (targetScrollIndex !== null) {
-                setTimeout(() => {
+
+            let attempts = 0;
+            function attemptScroll() {
+                let targetEl = null;
+                if (targetScrollIndex !== null) {
                     var container = document.getElementById('chapter-container-' + targetScrollIndex);
-                    if(container) container.scrollIntoView({ behavior: 'auto', block: 'start' });
-                }, 100);
-            }
-        }
+                    if (container) {
+                         // 优先找 container 里的 h3 (标题)，没有就找 p
+                         targetEl = container.querySelector('h3') || container.querySelector('p');
+                    }
+                } else {
+                    targetEl = firstElement;
+                }
 
-        // 🔊 核心朗读逻辑
-        var playBtn = document.getElementById('play-btn');
-        playBtn.addEventListener('click', toggleSpeech);
-
-        function toggleSpeech() {
-            if (isPlaying) {
-                stopReading();
-            } else {
-                startReading();
-            }
-        }
-
-        function startReading() {
-            // 获取当前可视区域的所有段落
-            var paras = Array.from(document.querySelectorAll('.readable-para'));
-            if (paras.length === 0) return;
-
-            // 找到第一个在视口内的段落作为起点（简单判断）
-            var startIdx = 0;
-            for (let i = 0; i < paras.length; i++) {
-                var rect = paras[i].getBoundingClientRect();
-                if (rect.top >= 50 && rect.top < window.innerHeight) {
-                    startIdx = i; break;
+                if (targetEl) {
+                    targetEl.scrollIntoView({ behavior: 'auto', block: 'start' });
+                    window.scrollBy(0, -70);
+                    targetEl.classList.add('highlight-target'); // 闪烁一下提醒
+                    if (isProgressLocked) {
+                        setTimeout(() => { isProgressLocked = false; }, 1000);
+                    }
+                } else if (attempts < 20) {
+                    attempts++; setTimeout(attemptScroll, 200);
+                } else {
+                    if (isProgressLocked) isProgressLocked = false;
                 }
             }
-
-            readingQueue = paras.slice(startIdx);
-            currentParaIndex = 0;
-            isPlaying = true;
-            updatePlayButton();
-            readNextPara();
+            attemptScroll();
         }
 
-        function readNextPara() {
-            if (!isPlaying || currentParaIndex >= readingQueue.length) {
-                stopReading(); return;
-            }
-
-            var p = readingQueue[currentParaIndex];
-            var text = p.innerText;
-
-            // 💡 滚动+高亮
-            document.querySelectorAll('.active-reading').forEach(el => el.classList.remove('active-reading'));
-            p.classList.add('active-reading');
-            p.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-            var utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'zh-CN'; 
-            utterance.rate = 1.0; 
-
-            utterance.onend = function() {
-                currentParaIndex++;
-                readNextPara();
-            };
-            
-            utterance.onerror = function() {
-                // 错误处理，自动跳过
-                currentParaIndex++;
-                readNextPara();
-            };
-
-            synth.speak(utterance);
-        }
-
-        function stopReading() {
-            synth.cancel();
-            isPlaying = false;
-            document.querySelectorAll('.active-reading').forEach(el => el.classList.remove('active-reading'));
-            updatePlayButton();
-        }
-
-        function updatePlayButton() {
-            if (isPlaying) {
-                playBtn.innerText = "⏸️ 停止朗读";
-                playBtn.classList.add('playing');
+        function loadChapterByMatch(href, label) {
+            var targetIndex = -1;
+            var spineItem = book.spine.get(href);
+            if (spineItem) {
+                targetIndex = spineItem.index;
             } else {
-                playBtn.innerText = "▶️ 开启听书 (Sync)";
-                playBtn.classList.remove('playing');
+                var cleanHref = decodeURIComponent(href.split('#')[0]);
+                var targetName = cleanHref.split('/').pop();
+                for(var i=0; i<spine.length; i++) {
+                    if (decodeURIComponent(spine[i].href).indexOf(targetName) !== -1) {
+                        targetIndex = i; break;
+                    }
+                }
+            }
+            if(targetIndex !== -1) {
+                localStorage.setItem('exactChapterIndex', targetIndex);
+                var batchStart = Math.floor(targetIndex / BATCH_SIZE) * BATCH_SIZE;
+                renderBatch(batchStart, targetIndex, label);
+            } else {
+                alert("无法定位文件");
             }
         }
 
         document.getElementById('prev-btn').addEventListener('click', function() {
             if (currentStartIndex - BATCH_SIZE >= 0) renderBatch(currentStartIndex - BATCH_SIZE);
+            else alert("已经是开头了");
         });
         document.getElementById('next-btn').addEventListener('click', function() {
             if (currentStartIndex + BATCH_SIZE < spine.length) renderBatch(currentStartIndex + BATCH_SIZE);
+            else alert("后面没有了");
         });
     </script>
 </body>
