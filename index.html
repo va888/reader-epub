@@ -8,15 +8,14 @@
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        /* 🎨 Apple Books 风格暖米色背景 */
+        /* 🎨 保持 Apple Books 暖米色风格 */
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background-color: #FAF6EF; color: #333; padding-bottom: 120px; padding-top: 60px; }
         :focus { outline: none; }
         
-        /* 顶部和底部栏 */
         .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: #FAF6EF; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center; padding: 0 15px; z-index: 100; }
         .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 120px; background: #FAF6EF; box-shadow: 0 -5px 20px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
         
-        /* 版本号 v4.6 */
+        /* 版本号 v4.7 */
         .ver-tag { position: absolute; top: 5px; left: 5px; font-size: 10px; color: purple; font-weight: bold; z-index: 101; background: rgba(243, 229, 245, 0.5); padding: 2px 4px; border-radius: 4px; opacity: 0.6; }
 
         #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; background: #fdfbf7; padding-left: 10px; -webkit-appearance: none; color: #333; }
@@ -25,8 +24,9 @@
         @keyframes flash { 0% { background-color: #ffe69c; } 100% { background-color: transparent; } }
         .highlight-target { animation: flash 2s ease-out; }
         
-        /* 隐藏掉 h3，因为我们现在只用它做定位，不需要显示 */
-        h3.tracker { font-size: 1px; color: transparent; height: 1px; margin: 0; padding: 0; border: none; }
+        /* 章节标题样式：加粗，大号，颜色深 */
+        h3 { font-size: 1.4em; color: #000; font-weight: 800; margin-top: 10px; margin-bottom: 20px; line-height: 1.4; }
+        h3.current-reading { color: #d35400; border-left: 4px solid #d35400; padding-left: 10px; }
 
         p { margin-bottom: 24px; text-align: justify; }
         
@@ -44,13 +44,13 @@
 </head>
 <body>
     <div class="header">
-        <div class="ver-tag">v4.6</div>
+        <div class="ver-tag">v4.7</div>
         <select id="toc-select" disabled><option>⏳ 载入中...</option></select>
     </div>
 
     <div class="upload-container" id="upload-area">
         <h2 style="color:#333; margin-bottom: 10px;">EPUB阅读器</h2>
-        <p style="color:#999; font-size: 14px; margin-bottom: 30px;">纯净版 · 沉浸阅读</p>
+        <p style="color:#999; font-size: 14px; margin-bottom: 30px;">纯净版 · 智能标题</p>
         
         <button id="resume-btn">🔄 继续阅读</button>
 
@@ -81,6 +81,7 @@
         var isProgressLocked = false; 
         
         var JUNK_REGEX = /^(cover|unknown|未知|封面|title page|copyright|content|目录|前言)$/i;
+        // 关键词库：用来判断是否是标题的“变体”
         var TITLE_KEYWORDS = ["第", "章", "Chapter", "序", "前言", "Prologue", "Introduction", "卷", "部", "经历表"];
 
         localforage.config({ name: 'listenflow_db' });
@@ -192,7 +193,8 @@
                         var idx = entry.target.getAttribute('data-index');
                         if (idx) {
                             localStorage.setItem('exactChapterIndex', idx);
-                            // 这里不更新 DOM 颜色了，因为 h3 是透明的
+                            document.querySelectorAll('.current-reading').forEach(el => el.classList.remove('current-reading'));
+                            entry.target.classList.add('current-reading');
                         }
                     }
                 });
@@ -219,58 +221,87 @@
                         let hr = document.createElement('hr'); hr.className = 'chapter-divider'; chapterDiv.appendChild(hr);
                     }
 
-                    // 🥷 放置隐形定位点：用来告诉系统这一章开始了，但用户看不见
-                    let tracker = document.createElement('h3');
-                    tracker.className = 'tracker';
-                    tracker.setAttribute('data-index', i);
-                    tracker.innerText = `[${i}]`; // 内容其实看不见
-                    observer.observe(tracker);
-                    chapterDiv.appendChild(tracker);
-                    if(!firstElement) firstElement = tracker;
-
+                    // 🔥 核心修改：每章只允许 1 个显性标题
+                    let titleAlreadyShown = false; 
                     let paraCount = 0;
-                    let lastParaText = "";
 
                     paragraphs.forEach(function(pText) {
                         pText = pText.replace(/[\u00a0\u200b\u3000]/g, ' ').trim();
-                        
                         var isSymbolOnly = pText.replace(/[^\w\u4e00-\u9fa5]/g, '').length === 0;
                         var isJunkWord = (pText.length < 20 && JUNK_REGEX.test(pText));
                         
-                        // 🧹 智能标题去除逻辑
-                        // 1. 本章前3段
-                        // 2. 长度小于60
-                        // 3. 不以标点符号结尾 (句号/感叹/问号/引号) -> 说明是标题，不是句子
+                        // 判断是否“像”标题：
+                        // 1. 位于前 5 行
+                        // 2. 长度小于 50 字
+                        // 3. 不以常见句末标点结尾
                         // 4. 或者包含特定的标题关键词
                         var isPunctuationEnd = /[。.!！?？”"]$/.test(pText);
-                        var isLikelyTitle = (paraCount < 5 && pText.length < 60 && !isPunctuationEnd) || (pText.length < 40 && TITLE_KEYWORDS.some(k => pText.includes(k)));
-                        var isDuplicate = (pText === lastParaText);
+                        var isLikelyTitle = (paraCount < 5 && pText.length < 50 && !isPunctuationEnd) || (pText.length < 40 && TITLE_KEYWORDS.some(k => pText.includes(k)));
 
-                        // 只有当它既不是符号，不是垃圾词，也不是疑似标题，也不是重复行时，才显示
-                        if (pText.length > 0 && !isSymbolOnly && !isJunkWord && !isLikelyTitle && !isDuplicate) {
-                            let el = document.createElement('p');
-                            el.innerText = pText; 
-                            el.setAttribute('tabindex', '-1'); 
-                            chapterDiv.appendChild(el);
-                            lastParaText = pText; // 记录上一行用于查重
+                        // 只有通过垃圾检测才处理
+                        if (pText.length > 0 && !isSymbolOnly && !isJunkWord) {
+                            
+                            // 逻辑 A：如果这是个像标题的东西，且本章还没显示过标题 -> 它是真标题，显示！
+                            if (isLikelyTitle && !titleAlreadyShown) {
+                                let el = document.createElement('h3');
+                                el.innerText = pText; 
+                                el.setAttribute('data-index', i); // 定位点挂在这个真标题上
+                                observer.observe(el);
+                                chapterDiv.appendChild(el);
+                                if(!firstElement) firstElement = el;
+                                titleAlreadyShown = true; // 标记：大爷已经坐下了，后面的同类都别想坐
+                            }
+                            // 逻辑 B：如果这是个像标题的东西，但本章已经有标题了 -> 它是重复废话，杀！
+                            else if (isLikelyTitle && titleAlreadyShown) {
+                                // 隐形定位点：为了防止第一行被误杀导致无法定位，我们在被杀的地方留个魂
+                                if (!firstElement) {
+                                     let tracker = document.createElement('h3'); // 备用定位
+                                     tracker.style.cssText="font-size:1px;color:transparent;height:1px;margin:0;";
+                                     tracker.setAttribute('data-index', i); observer.observe(tracker);
+                                     chapterDiv.appendChild(tracker);
+                                     firstElement = tracker;
+                                }
+                                return; // 直接跳过渲染
+                            }
+                            // 逻辑 C：正文
+                            else {
+                                let el = document.createElement('p');
+                                el.innerText = pText; 
+                                el.setAttribute('tabindex', '-1'); 
+                                chapterDiv.appendChild(el);
+                                // 如果这一章开头全是废话被杀光了，第一句正文也可以作为定位点
+                                if (!firstElement && !titleAlreadyShown) {
+                                    el.setAttribute('data-index', i); observer.observe(el);
+                                    firstElement = el;
+                                }
+                            }
                         }
                         if (pText.length > 0) paraCount++;
                     });
                     
-                    viewer.appendChild(chapterDiv);
+                    // 兜底：如果这一章啥都没显示（极少情况），补一个隐形点防止报错
+                    if (chapterDiv.hasChildNodes()) {
+                         if (!firstElement) {
+                             let tracker = document.createElement('h3');
+                             tracker.setAttribute('data-index', i); observer.observe(tracker);
+                             tracker.style.cssText="font-size:1px;color:transparent;";
+                             chapterDiv.prepend(tracker);
+                             if(!firstElement) firstElement = tracker;
+                         }
+                        viewer.appendChild(chapterDiv);
+                    }
                 } catch (err) {}
             }
             showLoading(false);
 
             let attempts = 0;
             function attemptScroll() {
-                // 自动定位到这一章的“隐形点”
                 let targetEl = null;
                 if (targetScrollIndex !== null) {
                     var container = document.getElementById('chapter-container-' + targetScrollIndex);
                     if (container) {
-                         // 优先找 container 里的 tracker
-                         targetEl = container.querySelector('.tracker') || container.querySelector('p');
+                         // 优先找 container 里的 h3 (标题)，没有就找 p
+                         targetEl = container.querySelector('h3') || container.querySelector('p');
                     }
                 } else {
                     targetEl = firstElement;
@@ -278,8 +309,8 @@
 
                 if (targetEl) {
                     targetEl.scrollIntoView({ behavior: 'auto', block: 'start' });
-                    // 微调位置，别被顶部栏挡住
                     window.scrollBy(0, -70);
+                    targetEl.classList.add('highlight-target'); // 闪烁一下提醒
                     if (isProgressLocked) {
                         setTimeout(() => { isProgressLocked = false; }, 1000);
                     }
