@@ -18,8 +18,17 @@
         /* 📖 关键：使用 article 标签并确保显示为块级，诱导 Safari 识别 */
         article#viewer { background: #FAF6EF; padding: 20px 20px; min-height: 80vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; display: block; }
         
-        /* 🎯 调整：章节标题显著放大 */
-        h2 { color: #000; font-weight: 900; font-size: 1.8em; margin-top: 40px; margin-bottom: 30px; line-height: 1.3; letter-spacing: -0.5px; }
+        /* 🎯 调整：章节标题超大号 + 下划线装饰，确保醒目 */
+        h2 { 
+            color: #000; 
+            font-weight: 900; 
+            font-size: 2.0em; 
+            margin-top: 40px; 
+            margin-bottom: 30px; 
+            line-height: 1.3; 
+            border-bottom: 2px solid rgba(0,0,0,0.05); /* 增加分割线，更有仪式感 */
+            padding-bottom: 15px;
+        }
         
         p { margin-bottom: 24px; text-align: justify; outline: none; }
         .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0)); margin-top: 50px; margin-bottom: 50px; }
@@ -62,9 +71,9 @@
 
     <script>
         var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 10;
-        var TITLE_KEYWORDS = ["第", "章", "Chapter", "序", "前言", "Prologue", "Introduction", "卷", "部", "经历表"];
-        // 🗑️ 增强过滤：增加对常见书名位置词的过滤
-        var JUNK_REGEX = /^(cover|unknown|未知|封面|title page|copyright|content|目录|前言|书名|作者|author|book)/i;
+        // 🗑️ 垃圾词库：只过滤绝对是废话的内容
+        var JUNK_REGEX = /^(cover|unknown|未知|封面|title page|copyright|content|目录|前言|author|book|page)/i;
+        var TITLE_KEYWORDS = ["第", "章", "Chapter", "序", "前言", "卷", "部", "节"];
 
         localforage.config({ name: 'listenflow_db' });
 
@@ -131,39 +140,29 @@
                     
                     let shownTitle = false, paraCount = 0, anchorSet = false;
                     
-                    // 📚 书名元数据探测：尝试获取这一章的元数据标题（通常是书名或章节名）
-                    // 我们可以比较元数据标题和段落文本，如果完全一致且不像章节名，可能就是书名
-                    
                     paragraphs.forEach(function(pText) {
                         pText = pText.replace(/[\u00a0\u200b\u3000]/g, ' ').trim();
                         if(!pText || JUNK_REGEX.test(pText)) return;
 
-                        // 🔍 严格判断标题：
-                        // 1. 必须包含章节关键词（第/章/序...）
-                        // 2. 或者长度极短（< 30字）且不以标点结尾（像标题）
-                        // 3. 必须排除只包含书名的情况（如果pText不含"第x章"这种结构，且出现在第一行，极大概率是书名）
+                        // 🔍 标题判定逻辑 v4.15
+                        // 1. 包含关键字（第x章） -> 肯定是标题
+                        // 2. 或者：还没显示过标题 + 字数少(<30) + 没标点结尾 -> 即使没关键字，也视为标题（比如"回乡"、"暗战"）
                         
                         var hasChapterKeyword = TITLE_KEYWORDS.some(k => pText.includes(k));
-                        var isShortLine = pText.length < 50 && !/[。.!！?？”"]$/.test(pText);
+                        var isShortLine = pText.length < 30 && !/[。.!！?？”"]$/.test(pText);
                         
-                        // ⚡️ 核心过滤逻辑：只有包含章节关键词的，才配做H2大标题
-                        // 那些只是"短行"但没有关键词的（大概率是书名），直接跳过！
-                        var isTitle = (paraCount < 5 && hasChapterKeyword); 
+                        // ⚡️ 核心改动：只要是第一行短句，都给显示出来！
+                        var isTitle = (paraCount < 5 && (hasChapterKeyword || (!shownTitle && isShortLine)));
 
                         if (isTitle && !shownTitle) {
                             let el = document.createElement('h2'); 
                             el.innerText = pText; el.setAttribute('data-index', i);
                             chapterSection.appendChild(el); shownTitle = anchorSet = true;
                         } else {
-                            // 即使不是标题，也要判断是不是书名废话
-                            // 如果它很短，且没有章节关键词，且出现在前几行 -> 视为书名垃圾，不渲染！
-                            if (paraCount < 3 && isShortLine && !hasChapterKeyword) {
-                                // Skip (认为是书名)
-                            } else {
-                                let el = document.createElement('p'); el.innerText = pText;
-                                if(!anchorSet) { el.setAttribute('data-index', i); anchorSet = true; }
-                                chapterSection.appendChild(el);
-                            }
+                            // 正文
+                            let el = document.createElement('p'); el.innerText = pText;
+                            if(!anchorSet) { el.setAttribute('data-index', i); anchorSet = true; }
+                            chapterSection.appendChild(el);
                         }
                         paraCount++;
                     });
