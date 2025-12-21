@@ -8,37 +8,48 @@
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        /* 🎨 保持黄金版视觉标准 */
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background-color: #FAF6EF; color: #333; padding-bottom: 120px; padding-top: 60px; }
-        .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: #FAF6EF; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center; padding: 0 15px; z-index: 100; }
-        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 110px; background: #FAF6EF; box-shadow: 0 -5px 20px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
+        /* 🎨 核心视觉变量系统：日间原色，夜间极客黑 */
+        :root {
+            --bg: #FAF6EF; 
+            --text: #333; 
+            --h2-color: #000; 
+            --border: #e0e0e0; 
+            --toc-bg: #fdfbf7;
+            --divider: rgba(0, 0, 0, 0.1);
+        }
+
+        /* 🌙 极客级系统自动感光 */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1A1A1A; 
+                --text: #F0F0F0; 
+                --h2-color: #FFFFFF; 
+                --border: #333333; 
+                --toc-bg: #222222;
+                --divider: rgba(255, 255, 255, 0.1);
+            }
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            margin: 0; padding: 0; 
+            background-color: var(--bg); 
+            color: var(--text); 
+            padding-bottom: 120px; padding-top: 60px; 
+            transition: background-color 0.5s ease, color 0.5s ease; /* 丝滑切换动效 */
+        }
+
+        .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; z-index: 100; transition: background 0.5s ease; }
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 110px; background: var(--bg); box-shadow: 0 -5px 20px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; transition: background 0.5s ease; }
         .ver-tag { position: absolute; top: 5px; left: 5px; font-size: 10px; color: purple; font-weight: bold; z-index: 101; background: rgba(243, 229, 245, 0.5); padding: 2px 4px; border-radius: 4px; opacity: 0.6; }
-        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; background: #fdfbf7; padding-left: 10px; -webkit-appearance: none; color: #333; }
+        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--toc-bg); padding-left: 10px; -webkit-appearance: none; color: var(--text); }
         
-        /* 📖 阅读容器 */
-        article#viewer { background: #FAF6EF; padding: 20px 20px; min-height: 80vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; display: block; }
+        article#viewer { background: var(--bg); padding: 20px 20px; min-height: 80vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; display: block; transition: background 0.5s ease; }
         
-        /* 🎯 章节标题：单行显示，字号大，加粗 */
-        h2 { 
-            color: #000; 
-            font-weight: 900; 
-            font-size: 1.8em; 
-            margin-top: 40px; 
-            margin-bottom: 30px; 
-            line-height: 1.4; 
-        }
+        h2 { color: var(--h2-color); font-weight: 900; font-size: 1.8em; margin-top: 40px; margin-bottom: 30px; line-height: 1.4; }
+        p { margin-bottom: 24px; text-align: justify; outline: none; font-size: 22px; font-weight: normal; line-height: 1.8; }
         
-        /* 📝 正文：字号加大到 22px，阅读更舒适 */
-        p { 
-            margin-bottom: 24px; 
-            text-align: justify; 
-            outline: none; 
-            font-size: 22px; 
-            font-weight: normal; 
-            line-height: 1.8;
-        }
-        
-        .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0)); margin-top: 50px; margin-bottom: 50px; }
+        .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), var(--divider), rgba(0, 0, 0, 0)); margin-top: 50px; margin-bottom: 50px; }
         @keyframes flash { 0% { background-color: #ffe69c; } 100% { background-color: transparent; } }
         .highlight-target { animation: flash 2s ease-out; }
         .control-group { display: flex; width: 90%; justify-content: space-between; align-items: center; }
@@ -79,7 +90,6 @@
     <script>
         var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 10;
         var TITLE_KEYWORDS = ["第", "章", "Chapter", "序", "前言", "Prologue", "Introduction", "卷", "部", "节", "Part"];
-        // 🗑️ 垃圾词正则：新增纯数字过滤（针对 8020）
         var JUNK_REGEX = /^(cover|unknown|未知|封面|title page|copyright|content|目录|前言|author|book|page|\d+$)/i;
 
         localforage.config({ name: 'listenflow_db' });
@@ -145,7 +155,6 @@
                     chapterSection.id = 'chapter-' + i;
                     if (i > startIndex) { let hr = document.createElement('hr'); hr.className = 'chapter-divider'; chapterSection.appendChild(hr); }
                     
-                    // 📦 标题缓冲池：用于合并 "第7章" 和 "标题名"
                     let titleBuffer = ""; 
                     let titleIndex = -1;
                     let hasShownMainTitle = false; 
@@ -154,92 +163,44 @@
                                                .filter(p => p.length > 0 && !JUNK_REGEX.test(p));
 
                     cleanParas.forEach(function(pText, idx) {
-                        // 1. 垃圾过滤：如果还没找到大标题，且当前行没有关键词 -> 杀掉 (解决 8020)
                         var hasKeyword = TITLE_KEYWORDS.some(k => pText.includes(k));
-                        if (!hasShownMainTitle && titleBuffer === "" && !hasKeyword) {
-                            // 如果前5行都没找到标题，这些可能就是书名/页码垃圾
-                            if (idx < 5) return; 
-                        }
-
-                        // 2. 标题判定逻辑
+                        if (!hasShownMainTitle && titleBuffer === "" && !hasKeyword) { if (idx < 5) return; }
                         var isShortLine = pText.length < 50 && !/[。.!！?？”"]$/.test(pText);
-                        
-                        // 🔪 智能分割逻辑：如果有关键词，但是太长了（图3情况），说明粘连了
-                        // 尝试切分：找到第一个空格，前面是标题，后面是正文
-                        let splitTitle = null;
-                        let splitBody = null;
+                        let splitTitle = null, splitBody = null;
                         if (hasKeyword && pText.length >= 50) {
-                            // 尝试寻找分割点（空格）
                             let splitIdx = pText.indexOf(' ');
                             if (splitIdx > 0 && splitIdx < 30) {
-                                // 成功切分！
                                 splitTitle = pText.substring(0, splitIdx);
                                 splitBody = pText.substring(splitIdx + 1);
-                                isShortLine = true; // 强行视为短标题处理前半部分
+                                isShortLine = true; 
                             }
                         }
-
-                        // 3. 进入缓冲逻辑
-                        // 只有在前10行才尝试捕捉标题
                         if (idx < 10 && !hasShownMainTitle) {
                             if (splitTitle) {
-                                // 这种情况直接处理：前半截进缓冲，立即flush，后半截当正文
                                 if (titleBuffer !== "") titleBuffer += " ";
                                 titleBuffer += splitTitle;
-                                
-                                // 立即输出标题
-                                let h2 = document.createElement('h2');
-                                h2.innerText = titleBuffer;
-                                h2.setAttribute('data-index', i);
+                                let h2 = document.createElement('h2'); h2.innerText = titleBuffer; h2.setAttribute('data-index', i);
                                 chapterSection.appendChild(h2);
-                                
-                                // 立即输出后半截正文
-                                let p = document.createElement('p');
-                                p.innerText = splitBody;
-                                chapterSection.appendChild(p);
-                                
-                                hasShownMainTitle = true;
-                                titleBuffer = "";
-                                return; //这一行处理完了
+                                let p = document.createElement('p'); p.innerText = splitBody; chapterSection.appendChild(p);
+                                hasShownMainTitle = true; titleBuffer = ""; return; 
                             } 
                             else if (hasKeyword || (titleBuffer !== "" && isShortLine)) {
-                                // 正常短标题，进缓冲池
-                                if (titleBuffer !== "") titleBuffer += " "; // 加个空格拼接
-                                titleBuffer += pText;
-                                if (titleIndex === -1) titleIndex = i;
-                                return; // 暂不输出，等下一行看看是不是也是标题
+                                if (titleBuffer !== "") titleBuffer += " "; titleBuffer += pText;
+                                if (titleIndex === -1) titleIndex = i; return; 
                             }
                         }
-
-                        // 4. 遇到正文了（或者已经显示过标题了）
-                        // 先把缓冲区里的标题吐出来
                         if (titleBuffer !== "") {
-                            let h2 = document.createElement('h2');
-                            h2.innerText = titleBuffer;
-                            h2.setAttribute('data-index', titleIndex);
-                            chapterSection.appendChild(h2);
-                            titleBuffer = "";
-                            hasShownMainTitle = true;
+                            let h2 = document.createElement('h2'); h2.innerText = titleBuffer; h2.setAttribute('data-index', titleIndex);
+                            chapterSection.appendChild(h2); titleBuffer = ""; hasShownMainTitle = true;
                         }
-
-                        // 输出当前正文
-                        let el = document.createElement('p'); 
-                        el.innerText = pText;
-                        if (titleIndex === -1 && !hasShownMainTitle) { 
-                            el.setAttribute('data-index', i); 
-                            titleIndex = -2; 
-                        }
+                        let el = document.createElement('p'); el.innerText = pText;
+                        if (titleIndex === -1 && !hasShownMainTitle) { el.setAttribute('data-index', i); titleIndex = -2; }
                         chapterSection.appendChild(el);
                     });
-
-                    // 兜底：如果章节结束了还有标题没吐出来
                     if (titleBuffer !== "") {
-                        let h2 = document.createElement('h2');
-                        h2.innerText = titleBuffer;
-                        h2.setAttribute('data-index', titleIndex);
+                        let h2 = document.createElement('h2'); h2.innerText = titleBuffer; h2.setAttribute('data-index', titleIndex);
                         chapterSection.appendChild(h2);
                     }
-
                     if (chapterSection.hasChildNodes()) viewer.appendChild(chapterSection);
                 } catch (e) {}
             }
@@ -261,8 +222,7 @@
         }
 
         function loadChapterByMatch(href, label) {
-            var targetIndex = -1;
-            var spineItem = book.spine.get(href);
+            var targetIndex = -1; var spineItem = book.spine.get(href);
             if (spineItem) { targetIndex = spineItem.index; } 
             else {
                 var targetName = decodeURIComponent(href.split('#')[0]).split('/').pop();
