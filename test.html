@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>EPUB纯净版阅读器</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+    <style>
+        /* 🎨 商业级动态色彩逻辑 */
+        :root {
+            --bg-color: #FAF6EF; 
+            --text-color: #333;
+            --header-footer-bg: #FAF6EF;
+            --border-color: #e0e0e0;
+            --h2-color: #000;
+            --toc-bg: #fdfbf7;
+            --divider: rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme='dark'] {
+            --bg-color: #1A1A1A;
+            --text-color: #F0F0F0;
+            --header-footer-bg: #1A1A1A;
+            --border-color: #333;
+            --h2-color: #FFFFFF;
+            --toc-bg: #222;
+            --divider: rgba(255, 255, 255, 0.1);
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            margin: 0; padding: 0; 
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            padding-bottom: 120px; padding-top: 60px;
+            transition: background-color 0.5s ease, color 0.5s ease; /* 电影级丝滑切换 */
+        }
+
+        .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--header-footer-bg); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; padding: 0 15px; z-index: 100; transition: all 0.5s ease; }
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 110px; background: var(--header-footer-bg); box-shadow: 0 -5px 20px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; border-top: 1px solid var(--border-color); transition: all 0.5s ease; }
+        .ver-tag { position: absolute; top: 5px; left: 5px; font-size: 10px; color: purple; font-weight: bold; z-index: 101; background: rgba(243, 229, 245, 0.5); padding: 2px 4px; border-radius: 4px; opacity: 0.6; }
+        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--toc-bg); padding-left: 10px; -webkit-appearance: none; color: var(--text-color); outline: none; }
+        
+        article#viewer { background: var(--bg-color); padding: 20px 20px; min-height: 80vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; display: block; transition: background-color 0.5s ease; }
+        
+        h2 { color: var(--h2-color); font-weight: 900; font-size: 1.8em; margin-top: 40px; margin-bottom: 30px; line-height: 1.4; }
+        p { margin-bottom: 24px; text-align: justify; outline: none; font-size: 22px; font-weight: normal; line-height: 1.8; }
+        
+        .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), var(--divider), rgba(0, 0, 0, 0)); margin-top: 50px; margin-bottom: 50px; }
+        @keyframes flash { 0% { background-color: #ffe69c; } 100% { background-color: transparent; } }
+        .highlight-target { animation: flash 2s ease-out; }
+        .control-group { display: flex; width: 90%; justify-content: space-between; align-items: center; }
+        .nav-btn { width: 48%; height: 55px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; color: white; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        #prev-btn { background-color: #bdc3c7; color: #555; } 
+        #next-btn { background-color: #3498db; }
+        .upload-container { padding: 40px 20px; text-align: center; margin-top: 40px; }
+        #resume-btn { display: none; width: 80%; padding: 15px; margin: 0 auto 20px auto; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; }
+        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 200; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="ver-tag"></div>
+        <select id="toc-select" disabled><option></option></select>
+    </header>
+
+    <div class="upload-container" id="upload-area">
+        <h2>EPUB纯净版阅读器</h2>
+        <button id="resume-btn">🔄 继续阅读</button>
+        <div style="margin-top: 20px;">
+            <label for="file-input" style="color: #3498db; cursor: pointer;">📂 打开书籍</label>
+            <input type="file" id="file-input" style="display: none;">
+        </div>
+    </div>
+
+    <article id="viewer"></article>
+
+    <footer class="footer">
+        <div id="page-info" style="font-size:12px; color:#999; margin-bottom:8px;"></div>
+        <div class="control-group">
+            <button id="prev-btn" class="nav-btn" disabled>上一组</button>
+            <button id="next-btn" class="nav-btn" disabled>下一组</button>
+        </div>
+    </footer>
+    <div id="loading">处理中...</div>
+
+    <script>
+        // 🌓 自动日夜间模式后台逻辑
+        function applyAutoTheme() {
+            const hour = new Date().getHours();
+            const isNight = hour >= 18 || hour < 6;
+            if (isNight) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+            }
+        }
+        applyAutoTheme();
+        setInterval(applyAutoTheme, 60000);
+
+        var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 10;
+        var TITLE_KEYWORDS = ["第", "章", "Chapter", "序", "前言", "Prologue", "Introduction", "卷", "部", "节", "Part"];
+        var JUNK_REGEX = /^(cover|unknown|未知|封面|title page|copyright|content|目录|前言|author|book|page|\d+$)/i;
+
+        localforage.config({ name: 'listenflow_db' });
+
+        window.onload = function() { checkSavedBook(); };
+        async function checkSavedBook() {
+            var savedBook = await localforage.getItem('currentBook');
+            if (savedBook) {
+                var btn = document.getElementById('resume-btn'); btn.style.display = 'block';
+                btn.onclick = function() { loadBookEngine(savedBook, true); };
+            }
+        }
+        document.getElementById('file-input').onchange = function(e) {
+            var file = e.target.files[0]; if (!file) return;
+            localforage.setItem('currentBook', file).then(() => loadBookEngine(file, false));
+        };
+
+        function loadBookEngine(data, isResume) {
+            document.getElementById('loading').style.display = 'block';
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                book = ePub(e.target.result);
+                book.loaded.spine.then(function(s) {
+                    spine = s;
+                    book.loaded.navigation.then(function(toc) {
+                        var select = document.getElementById('toc-select');
+                        select.innerHTML = '<option value="-1">📖 跳转目录...</option>';
+                        var flatten = function(items) {
+                            items.forEach(function(item) {
+                                var option = document.createElement('option');
+                                option.text = item.label.trim(); option.value = item.href + "|" + item.label.trim();
+                                select.add(option); if (item.subitems) flatten(item.subitems);
+                            });
+                        };
+                        flatten(toc.toc); select.disabled = false;
+                        select.onchange = function() {
+                            if(this.value !== "-1") { var parts = this.value.split('|'); loadChapterByMatch(parts[0], parts[1]); }
+                        };
+                    });
+                    document.getElementById('upload-area').style.display = 'none';
+                    document.getElementById('prev-btn').disabled = document.getElementById('next-btn').disabled = false;
+                    var startIdx = isResume ? (Math.floor(parseInt(localStorage.getItem('exactChapterIndex') || 0) / BATCH_SIZE) * BATCH_SIZE) : 0;
+                    renderBatch(startIdx, isResume ? parseInt(localStorage.getItem('exactChapterIndex')) : null);
+                });
+            }; reader.readAsArrayBuffer(data);
+        }
+
+        async function renderBatch(startIndex, targetScrollIndex = null) {
+            var viewer = document.getElementById('viewer'); viewer.innerHTML = '';
+            currentStartIndex = startIndex;
+            var endIndex = Math.min(startIndex + BATCH_SIZE, spine.length);
+            document.getElementById('page-info').innerText = `第 ${startIndex + 1} - ${endIndex} 章`;
+            
+            for (let i = startIndex; i < endIndex; i++) {
+                try {
+                    let section = spine.get(i);
+                    let doc = await section.load(book.load.bind(book));
+                    doc.querySelectorAll('style, script, link, meta').forEach(item => item.remove());
+                    let text = doc.body ? doc.body.innerText : (doc.textContent || "");
+                    let paragraphs = text.split(/\n+/);
+                    
+                    let chapterSection = document.createElement('section'); 
+                    chapterSection.id = 'chapter-' + i;
+                    if (i > startIndex) { let hr = document.createElement('hr'); hr.className = 'chapter-divider'; chapterSection.appendChild(hr); }
+                    
+                    let titleBuffer = ""; 
+                    let titleIndex = -1;
+                    let hasShownMainTitle = false; 
+
+                    let cleanParas = paragraphs.map(p => p.replace(/[\u00a0\u200b\u3000]/g, ' ').trim())
+                                               .filter(p => p.length > 0 && !JUNK_REGEX.test(p));
+
+                    cleanParas.forEach(function(pText, idx) {
+                        var hasKeyword = TITLE_KEYWORDS.some(k => pText.includes(k));
+                        if (!hasShownMainTitle && titleBuffer === "" && !hasKeyword) {
+                            if (idx < 5) return; 
+                        }
+                        var isShortLine = pText.length < 50 && !/[。.!！?？”"]$/.test(pText);
+                        let splitTitle = null;
+                        let splitBody = null;
+                        if (hasKeyword && pText.length >= 50) {
+                            let splitIdx = pText.indexOf(' ');
+                            if (splitIdx > 0 && splitIdx < 30) {
+                                splitTitle = pText.substring(0, splitIdx);
+                                splitBody = pText.substring(splitIdx + 1);
+                                isShortLine = true; 
+                            }
+                        }
+                        if (idx < 10 && !hasShownMainTitle) {
+                            if (splitTitle) {
+                                if (titleBuffer !== "") titleBuffer += " ";
+                                titleBuffer += splitTitle;
+                                let h2 = document.createElement('h2');
+                                h2.innerText = titleBuffer;
+                                h2.setAttribute('data-index', i);
+                                chapterSection.appendChild(h2);
+                                let p = document.createElement('p');
+                                p.innerText = splitBody;
+                                chapterSection.appendChild(p);
+                                hasShownMainTitle = true;
+                                titleBuffer = "";
+                                return; 
+                            } 
+                            else if (hasKeyword || (titleBuffer !== "" && isShortLine)) {
+                                if (titleBuffer !== "") titleBuffer += " "; 
+                                titleBuffer += pText;
+                                if (titleIndex === -1) titleIndex = i;
+                                return; 
+                            }
+                        }
+                        if (titleBuffer !== "") {
+                            let h2 = document.createElement('h2');
+                            h2.innerText = titleBuffer;
+                            h2.setAttribute('data-index', titleIndex);
+                            chapterSection.appendChild(h2);
+                            titleBuffer = "";
+                            hasShownMainTitle = true;
+                        }
+                        let el = document.createElement('p'); 
+                        el.innerText = pText;
+                        if (titleIndex === -1 && !hasShownMainTitle) { 
+                            el.setAttribute('data-index', i); 
+                            titleIndex = -2; 
+                        }
+                        chapterSection.appendChild(el);
+                    });
+                    if (titleBuffer !== "") {
+                        let h2 = document.createElement('h2');
+                        h2.innerText = titleBuffer;
+                        h2.setAttribute('data
