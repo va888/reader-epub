@@ -8,23 +8,28 @@
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        /* 🎨 极客级系统感知变量 */
+        /* 🎨 核心视觉变量系统 */
         :root {
-            /* 日间：保持您最舒服的原色 */
+            /* ☀️ 日间模式：锁定你最满意的米白色原色 */
             --bg: #FAF6EF; 
             --text: #333; 
             --h2-color: #000; 
             --border: #e0e0e0; 
             --toc-bg: #fdfbf7;
+            --divider: rgba(0, 0, 0, 0.1);
         }
 
-        /* 当系统或 data-theme 为 dark 时应用 */
-        [data-theme='dark'] {
-            --bg: #1A1A1A; 
-            --text: #F0F0F0; 
-            --h2-color: #FFFFFF; 
-            --border: #333333; 
-            --toc-bg: #222222;
+        /* 🌙 极客感应逻辑：直接监听 iPhone 系统深色模式 */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                /* 夜间模式：锁定极客黑 #1A1A1A */
+                --bg: #1A1A1A; 
+                --text: #F0F0F0; 
+                --h2-color: #FFFFFF; 
+                --border: #333333; 
+                --toc-bg: #222222;
+                --divider: rgba(255, 255, 255, 0.1);
+            }
         }
 
         body { 
@@ -33,20 +38,20 @@
             background-color: var(--bg); 
             color: var(--text); 
             padding-bottom: 120px; padding-top: 60px; 
-            transition: background-color 0.5s ease, color 0.5s ease; /* 商业级丝滑感 */
+            transition: background-color 0.5s ease, color 0.5s ease; /* 电影级丝滑动效 */
         }
 
-        .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; z-index: 100; transition: all 0.5s ease; }
-        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 110px; background: var(--bg); box-shadow: 0 -5px 20px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; transition: all 0.5s ease; }
+        .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; z-index: 100; transition: background 0.5s ease; }
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 110px; background: var(--bg); box-shadow: 0 -5px 20px rgba(0,0,0,0.05); border-top: 1px solid var(--border); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; transition: background 0.5s ease; }
         .ver-tag { position: absolute; top: 5px; left: 5px; font-size: 10px; color: purple; font-weight: bold; z-index: 101; background: rgba(243, 229, 245, 0.5); padding: 2px 4px; border-radius: 4px; opacity: 0.6; }
-        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--toc-bg); padding-left: 10px; -webkit-appearance: none; color: var(--text); outline: none; transition: all 0.5s ease; }
+        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--toc-bg); padding-left: 10px; -webkit-appearance: none; color: var(--text); outline: none; }
         
-        article#viewer { background: var(--bg); padding: 20px 20px; min-height: 80vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; display: block; transition: background-color 0.5s ease; }
+        article#viewer { background: var(--bg); padding: 20px 20px; min-height: 80vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; display: block; transition: background 0.5s ease; }
         
-        h2 { color: var(--h2-color); font-weight: 900; font-size: 1.8em; margin-top: 40px; margin-bottom: 30px; line-height: 1.4; transition: color 0.5s ease; }
-        p { margin-bottom: 24px; text-align: justify; outline: none; font-size: 22px; font-weight: normal; line-height: 1.8; color: var(--text); transition: color 0.5s ease; }
+        h2 { color: var(--h2-color); font-weight: 900; font-size: 1.8em; margin-top: 40px; margin-bottom: 30px; line-height: 1.4; }
+        p { margin-bottom: 24px; text-align: justify; outline: none; font-size: 22px; font-weight: normal; line-height: 1.8; }
         
-        .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), var(--border), rgba(0, 0, 0, 0)); margin-top: 50px; margin-bottom: 50px; }
+        .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), var(--divider), rgba(0, 0, 0, 0)); margin-top: 50px; margin-bottom: 50px; }
         @keyframes flash { 0% { background-color: #ffe69c; } 100% { background-color: transparent; } }
         .highlight-target { animation: flash 2s ease-out; }
         .control-group { display: flex; width: 90%; justify-content: space-between; align-items: center; }
@@ -85,16 +90,6 @@
     <div id="loading">处理中...</div>
 
     <script>
-        // 🌓 系统主题感知逻辑：毫秒级响应 iPhone 深色模式切换
-        function syncTheme() {
-            const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'day');
-        }
-        // 监听系统切换事件
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncTheme);
-        // 初始化
-        syncTheme();
-
         var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 10;
         var TITLE_KEYWORDS = ["第", "章", "Chapter", "序", "前言", "Prologue", "Introduction", "卷", "部", "节", "Part"];
         var JUNK_REGEX = /^(cover|unknown|未知|封面|title page|copyright|content|目录|前言|author|book|page|\d+$)/i;
@@ -136,4 +131,110 @@
                             if(this.value !== "-1") { var parts = this.value.split('|'); loadChapterByMatch(parts[0], parts[1]); }
                         };
                     });
-                    document.getElementById('upload-area').style.display = 'none
+                    document.getElementById('upload-area').style.display = 'none';
+                    document.getElementById('prev-btn').disabled = document.getElementById('next-btn').disabled = false;
+                    var startIdx = isResume ? (Math.floor(parseInt(localStorage.getItem('exactChapterIndex') || 0) / BATCH_SIZE) * BATCH_SIZE) : 0;
+                    renderBatch(startIdx, isResume ? parseInt(localStorage.getItem('exactChapterIndex')) : null);
+                });
+            }; reader.readAsArrayBuffer(data);
+        }
+
+        async function renderBatch(startIndex, targetScrollIndex = null) {
+            var viewer = document.getElementById('viewer'); viewer.innerHTML = '';
+            currentStartIndex = startIndex;
+            var endIndex = Math.min(startIndex + BATCH_SIZE, spine.length);
+            document.getElementById('page-info').innerText = `第 ${startIndex + 1} - ${endIndex} 章`;
+            
+            for (let i = startIndex; i < endIndex; i++) {
+                try {
+                    let section = spine.get(i);
+                    let doc = await section.load(book.load.bind(book));
+                    doc.querySelectorAll('style, script, link, meta').forEach(item => item.remove());
+                    let text = doc.body ? doc.body.innerText : (doc.textContent || "");
+                    let paragraphs = text.split(/\n+/);
+                    
+                    let chapterSection = document.createElement('section'); 
+                    chapterSection.id = 'chapter-' + i;
+                    if (i > startIndex) { let hr = document.createElement('hr'); hr.className = 'chapter-divider'; chapterSection.appendChild(hr); }
+                    
+                    let titleBuffer = ""; 
+                    let titleIndex = -1;
+                    let hasShownMainTitle = false; 
+
+                    let cleanParas = paragraphs.map(p => p.replace(/[\u00a0\u200b\u3000]/g, ' ').trim())
+                                               .filter(p => p.length > 0 && !JUNK_REGEX.test(p));
+
+                    cleanParas.forEach(function(pText, idx) {
+                        var hasKeyword = TITLE_KEYWORDS.some(k => pText.includes(k));
+                        if (!hasShownMainTitle && titleBuffer === "" && !hasKeyword) { if (idx < 5) return; }
+                        var isShortLine = pText.length < 50 && !/[。.!！?？”"]$/.test(pText);
+                        let splitTitle = null, splitBody = null;
+                        if (hasKeyword && pText.length >= 50) {
+                            let splitIdx = pText.indexOf(' ');
+                            if (splitIdx > 0 && splitIdx < 30) {
+                                splitTitle = pText.substring(0, splitIdx);
+                                splitBody = pText.substring(splitIdx + 1);
+                                isShortLine = true; 
+                            }
+                        }
+                        if (idx < 10 && !hasShownMainTitle) {
+                            if (splitTitle) {
+                                if (titleBuffer !== "") titleBuffer += " ";
+                                titleBuffer += splitTitle;
+                                let h2 = document.createElement('h2'); h2.innerText = titleBuffer; h2.setAttribute('data-index', i);
+                                chapterSection.appendChild(h2);
+                                let p = document.createElement('p'); p.innerText = splitBody; chapterSection.appendChild(p);
+                                hasShownMainTitle = true; titleBuffer = ""; return; 
+                            } 
+                            else if (hasKeyword || (titleBuffer !== "" && isShortLine)) {
+                                if (titleBuffer !== "") titleBuffer += " "; titleBuffer += pText;
+                                if (titleIndex === -1) titleIndex = i; return; 
+                            }
+                        }
+                        if (titleBuffer !== "") {
+                            let h2 = document.createElement('h2'); h2.innerText = titleBuffer; h2.setAttribute('data-index', titleIndex);
+                            chapterSection.appendChild(h2); titleBuffer = ""; hasShownMainTitle = true;
+                        }
+                        let el = document.createElement('p'); el.innerText = pText;
+                        if (titleIndex === -1 && !hasShownMainTitle) { el.setAttribute('data-index', i); titleIndex = -2; }
+                        chapterSection.appendChild(el);
+                    });
+                    if (titleBuffer !== "") {
+                        let h2 = document.createElement('h2'); h2.innerText = titleBuffer; h2.setAttribute('data-index', titleIndex);
+                        chapterSection.appendChild(h2);
+                    }
+                    if (chapterSection.hasChildNodes()) viewer.appendChild(chapterSection);
+                } catch (e) {}
+            }
+            document.getElementById('loading').style.display = 'none';
+            if (targetScrollIndex !== null) {
+                setTimeout(() => {
+                    var target = document.querySelector(`[data-index='${targetScrollIndex}']`);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'auto', block: 'start' }); window.scrollBy(0, -70);
+                        target.classList.add('highlight-target');
+                        target.setAttribute('tabindex', '-1'); target.focus();
+                    }
+                }, 250);
+            }
+        }
+
+        function loadChapterByMatch(href, label) {
+            var targetIndex = -1; var spineItem = book.spine.get(href);
+            if (spineItem) { targetIndex = spineItem.index; } 
+            else {
+                var targetName = decodeURIComponent(href.split('#')[0]).split('/').pop();
+                for(var i=0; i<spine.length; i++) {
+                    if (decodeURIComponent(spine[i].href).indexOf(targetName) !== -1) { targetIndex = i; break; }
+                }
+            }
+            if(targetIndex !== -1) {
+                localStorage.setItem('exactChapterIndex', targetIndex);
+                renderBatch(Math.floor(targetIndex / BATCH_SIZE) * BATCH_SIZE, targetIndex);
+            }
+        }
+        document.getElementById('prev-btn').onclick = function() { if (currentStartIndex >= BATCH_SIZE) renderBatch(currentStartIndex - BATCH_SIZE); };
+        document.getElementById('next-btn').onclick = function() { if (currentStartIndex + BATCH_SIZE < spine.length) renderBatch(currentStartIndex + BATCH_SIZE); };
+    </script>
+</body>
+</html>
