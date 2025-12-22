@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>EPUB 纯净版阅读器 - 深度结构恢复版</title>
+    <title>EPUB 纯净版阅读器 - 极客商业终极版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
@@ -25,19 +25,21 @@
         
         article#viewer { padding: 20px; min-height: 80vh; display: block; }
 
-        /* 🖋️ 商业级排版指令：强制物理缩进 */
+        /* 🖋️ 商业级排版指令 [cite: 2025-12-04] */
         h2 { 
             color: var(--h2-color); font-weight: 900; font-size: 1.8em; 
             margin: 40px 0 30px 0; line-height: 1.4; text-indent: 0 !important; 
         }
         
-        /* 核心：确保段落有间距且首行缩进 */
+        /* 强制首行缩进与段落感 */
         .epub-para { 
             display: block;
-            margin-bottom: 1.5em !important; 
+            margin-bottom: 1.4em !important; 
             text-align: justify; 
-            font-size: 21px; line-height: 1.8; 
-            text-indent: 2em !important; /* 强制两个字符缩进 */
+            font-size: 22px; line-height: 1.8; 
+            text-indent: 2em !important; /* 强制两字符缩进 */
+            white-space: pre-wrap;
+            word-wrap: break-word;
         }
 
         .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), var(--divider), rgba(0, 0, 0, 0)); margin: 50px 0; }
@@ -133,20 +135,23 @@
                         chapterSection.appendChild(hr); 
                     }
                     
-                    // 🚀 核心优化：直接遍历原始 DOM 节点，保留段落物理结构
-                    let elements = doc.body.querySelectorAll('p, div, h1, h2, h3');
+                    // 🚀 核心优化：回归全量文本解析，确保不丢内容
+                    let fullText = (doc.body || doc).innerText || (doc.body || doc).textContent || "";
+                    let paragraphs = fullText.split(/\n/); // 使用单换行符分割
+                    
                     let hasShownMainTitle = false;
                     let lastTitleText = "";
+                    let validParaCount = 0;
 
-                    elements.forEach((el, idx) => {
-                        let pText = el.innerText.replace(/[\u00a0\u200b\u3000]/g, ' ').trim();
+                    paragraphs.forEach((pText) => {
+                        pText = pText.replace(/[\u00a0\u200b\u3000]/g, ' ').trim();
                         if (pText.length < 1 || JUNK_REGEX.test(pText)) return;
 
                         var hasKeyword = TITLE_KEYWORDS.some(k => pText.includes(k));
-                        var isTitleLike = hasKeyword && pText.length < 60;
+                        var isTitleLike = hasKeyword && pText.length < 50;
 
                         // 标题去重逻辑
-                        if (!hasShownMainTitle && (isTitleLike || (idx < 3 && pText.length < 30))) {
+                        if (!hasShownMainTitle && (isTitleLike || (validParaCount === 0 && pText.length < 30))) {
                             let words = pText.split(/\s+/);
                             if (words.length > 2 && words[0] === words[words.length-1]) {
                                 pText = words.slice(0, -1).join(' ');
@@ -164,13 +169,15 @@
                                 if (pText.length < 2) return;
                             }
                             
-                            // 渲染真正的段落
+                            // 渲染带缩进的段落
                             let newP = document.createElement('p');
                             newP.className = 'epub-para';
                             newP.innerText = pText;
-                            if (!hasShownMainTitle && idx === 0) newP.setAttribute('data-index', i);
+                            // 如果是本章节第一块有效内容且没标标题，挂上索引
+                            if (validParaCount === 0) newP.setAttribute('data-index', i);
                             chapterSection.appendChild(newP);
                         }
+                        validParaCount++;
                     });
 
                     if (chapterSection.hasChildNodes()) viewer.appendChild(chapterSection);
