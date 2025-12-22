@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>EPUB纯净版阅读器</title>
+    <title>EPUB纯净版阅读器 - 商业级增强版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        /* 🎨 核心视觉变量系统：日间原色，夜间极客黑 */
+        /* 🎨 核心视觉变量系统：极客灰与夜间黑 */
         :root {
             --bg: #FAF6EF; 
             --text: #333; 
@@ -18,7 +18,7 @@
             --divider: rgba(0, 0, 0, 0.1);
         }
 
-        /* 🌙 极客级系统自动感光 */
+        /* 🌙 系统自动感光：电影级强对比 */
         @media (prefers-color-scheme: dark) {
             :root {
                 --bg: #1A1A1A; 
@@ -36,42 +36,40 @@
             background-color: var(--bg); 
             color: var(--text); 
             padding-bottom: 120px; padding-top: 60px; 
-            transition: background-color 0.5s ease, color 0.5s ease; /* 丝滑切换动效 */
+            transition: background-color 0.5s ease;
         }
 
-        .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; z-index: 100; transition: background 0.5s ease; }
-        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 110px; background: var(--bg); box-shadow: 0 -5px 20px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; transition: background 0.5s ease; }
-        .ver-tag { position: absolute; top: 5px; left: 5px; font-size: 10px; color: purple; font-weight: bold; z-index: 101; background: rgba(243, 229, 245, 0.5); padding: 2px 4px; border-radius: 4px; opacity: 0.6; }
-        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--toc-bg); padding-left: 10px; -webkit-appearance: none; color: var(--text); }
+        .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; z-index: 100; }
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 110px; background: var(--bg); box-shadow: 0 -5px 20px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
+        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--toc-bg); padding-left: 10px; color: var(--text); -webkit-appearance: none; }
         
-        article#viewer { background: var(--bg); padding: 20px 20px; min-height: 80vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; display: block; transition: background 0.5s ease; }
+        article#viewer { padding: 20px; min-height: 80vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; display: block; }
         
-        h2 { color: var(--h2-color); font-weight: 900; font-size: 1.8em; margin-top: 40px; margin-bottom: 30px; line-height: 1.4; }
-        p { margin-bottom: 24px; text-align: justify; outline: none; font-size: 22px; font-weight: normal; line-height: 1.8; }
+        h2 { color: var(--h2-color); font-weight: 900; font-size: 1.8em; margin: 40px 0 30px 0; line-height: 1.4; }
+        p { margin-bottom: 24px; text-align: justify; outline: none; font-size: 22px; line-height: 1.8; }
         
-        .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), var(--divider), rgba(0, 0, 0, 0)); margin-top: 50px; margin-bottom: 50px; }
-        @keyframes flash { 0% { background-color: #ffe69c; } 100% { background-color: transparent; } }
+        .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), var(--divider), rgba(0, 0, 0, 0)); margin: 50px 0; }
+        @keyframes flash { 0% { background-color: rgba(52, 152, 219, 0.3); } 100% { background-color: transparent; } }
         .highlight-target { animation: flash 2s ease-out; }
-        .control-group { display: flex; width: 90%; justify-content: space-between; align-items: center; }
+        
+        .control-group { display: flex; width: 90%; justify-content: space-between; }
         .nav-btn { width: 48%; height: 55px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; color: white; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         #prev-btn { background-color: #bdc3c7; color: #555; } 
         #next-btn { background-color: #3498db; }
+        
         .upload-container { padding: 40px 20px; text-align: center; margin-top: 40px; }
         #resume-btn { display: none; width: 80%; padding: 15px; margin: 0 auto 20px auto; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; }
         #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 200; }
     </style>
 </head>
 <body>
-    <header class="header">
-        <div class="ver-tag"></div>
-        <select id="toc-select" disabled><option></option></select>
-    </header>
+    <header class="header"><select id="toc-select" disabled><option>📖 跳转目录...</option></select></header>
 
     <div class="upload-container" id="upload-area">
-        <h2>EPUB纯净版阅读器</h2>
+        <h2>EPUB 纯净版阅读器</h2>
         <button id="resume-btn">🔄 继续阅读</button>
         <div style="margin-top: 20px;">
-            <label for="file-input" style="color: #3498db; cursor: pointer;">📂 打开书籍</label>
+            <label for="file-input" style="color: #3498db; cursor: pointer; font-weight: bold;">📂 打开本地书籍</label>
             <input type="file" id="file-input" style="display: none;">
         </div>
     </div>
@@ -89,8 +87,8 @@
 
     <script>
         var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 10;
-        var TITLE_KEYWORDS = ["第", "章", "Chapter", "序", "前言", "Prologue", "Introduction", "卷", "部", "节", "Part"];
-        var JUNK_REGEX = /^(cover|unknown|未知|封面|title page|copyright|content|目录|前言|author|book|page|\d+$)/i;
+        var TITLE_KEYWORDS = ["第", "章", "Chapter", "序", "前言", "Prologue", "节", "Part"];
+        var JUNK_REGEX = /^(cover|unknown|未知|封面|copyright|content|目录|author|\d+$)/i;
 
         localforage.config({ name: 'listenflow_db' });
 
@@ -102,6 +100,7 @@
                 btn.onclick = function() { loadBookEngine(savedBook, true); };
             }
         }
+
         document.getElementById('file-input').onchange = function(e) {
             var file = e.target.files[0]; if (!file) return;
             localforage.setItem('currentBook', file).then(() => loadBookEngine(file, false));
@@ -137,6 +136,7 @@
             }; reader.readAsArrayBuffer(data);
         }
 
+        /* 🚀 核心修复：简化标题渲染逻辑，消除重复叠加 */
         async function renderBatch(startIndex, targetScrollIndex = null) {
             var viewer = document.getElementById('viewer'); viewer.innerHTML = '';
             currentStartIndex = startIndex;
@@ -153,56 +153,37 @@
                     
                     let chapterSection = document.createElement('section'); 
                     chapterSection.id = 'chapter-' + i;
-                    if (i > startIndex) { let hr = document.createElement('hr'); hr.className = 'chapter-divider'; chapterSection.appendChild(hr); }
+                    if (i > startIndex) { 
+                        let hr = document.createElement('hr'); 
+                        hr.className = 'chapter-divider'; 
+                        chapterSection.appendChild(hr); 
+                    }
                     
-                    let titleBuffer = ""; 
-                    let titleIndex = -1;
                     let hasShownMainTitle = false; 
-
                     let cleanParas = paragraphs.map(p => p.replace(/[\u00a0\u200b\u3000]/g, ' ').trim())
                                                .filter(p => p.length > 0 && !JUNK_REGEX.test(p));
 
                     cleanParas.forEach(function(pText, idx) {
+                        // 标题判定逻辑：包含关键字且长度合理，或者是章节的第一行短文本
                         var hasKeyword = TITLE_KEYWORDS.some(k => pText.includes(k));
-                        if (!hasShownMainTitle && titleBuffer === "" && !hasKeyword) { if (idx < 5) return; }
-                        var isShortLine = pText.length < 50 && !/[。.!！?？”"]$/.test(pText);
-                        let splitTitle = null, splitBody = null;
-                        if (hasKeyword && pText.length >= 50) {
-                            let splitIdx = pText.indexOf(' ');
-                            if (splitIdx > 0 && splitIdx < 30) {
-                                splitTitle = pText.substring(0, splitIdx);
-                                splitBody = pText.substring(splitIdx + 1);
-                                isShortLine = true; 
-                            }
+                        var isTitleLike = hasKeyword && pText.length < 60;
+
+                        if (!hasShownMainTitle && (isTitleLike || (idx === 0 && pText.length < 30))) {
+                            let h2 = document.createElement('h2');
+                            h2.innerText = pText;
+                            h2.setAttribute('data-index', i);
+                            chapterSection.appendChild(h2);
+                            hasShownMainTitle = true; // 锁定标题，防止后续重复
+                        } else {
+                            let el = document.createElement('p');
+                            el.innerText = pText;
+                            if (!hasShownMainTitle && idx === 0) el.setAttribute('data-index', i);
+                            chapterSection.appendChild(el);
                         }
-                        if (idx < 10 && !hasShownMainTitle) {
-                            if (splitTitle) {
-                                if (titleBuffer !== "") titleBuffer += " ";
-                                titleBuffer += splitTitle;
-                                let h2 = document.createElement('h2'); h2.innerText = titleBuffer; h2.setAttribute('data-index', i);
-                                chapterSection.appendChild(h2);
-                                let p = document.createElement('p'); p.innerText = splitBody; chapterSection.appendChild(p);
-                                hasShownMainTitle = true; titleBuffer = ""; return; 
-                            } 
-                            else if (hasKeyword || (titleBuffer !== "" && isShortLine)) {
-                                if (titleBuffer !== "") titleBuffer += " "; titleBuffer += pText;
-                                if (titleIndex === -1) titleIndex = i; return; 
-                            }
-                        }
-                        if (titleBuffer !== "") {
-                            let h2 = document.createElement('h2'); h2.innerText = titleBuffer; h2.setAttribute('data-index', titleIndex);
-                            chapterSection.appendChild(h2); titleBuffer = ""; hasShownMainTitle = true;
-                        }
-                        let el = document.createElement('p'); el.innerText = pText;
-                        if (titleIndex === -1 && !hasShownMainTitle) { el.setAttribute('data-index', i); titleIndex = -2; }
-                        chapterSection.appendChild(el);
                     });
-                    if (titleBuffer !== "") {
-                        let h2 = document.createElement('h2'); h2.innerText = titleBuffer; h2.setAttribute('data-index', titleIndex);
-                        chapterSection.appendChild(h2);
-                    }
+
                     if (chapterSection.hasChildNodes()) viewer.appendChild(chapterSection);
-                } catch (e) {}
+                } catch (e) { console.error("渲染失败:", i, e); }
             }
             document.getElementById('loading').style.display = 'none';
             if (targetScrollIndex !== null) {
@@ -211,11 +192,6 @@
                     if (target) {
                         target.scrollIntoView({ behavior: 'auto', block: 'start' }); window.scrollBy(0, -70);
                         target.classList.add('highlight-target');
-                        target.setAttribute('tabindex', '-1'); target.focus();
-                        try {
-                            const range = document.createRange(); const sel = window.getSelection();
-                            range.selectNodeContents(target); sel.removeAllRanges(); sel.addRange(range);
-                        } catch(err) {}
                     }
                 }, 250);
             }
@@ -235,6 +211,7 @@
                 renderBatch(Math.floor(targetIndex / BATCH_SIZE) * BATCH_SIZE, targetIndex);
             }
         }
+
         document.getElementById('prev-btn').onclick = function() { if (currentStartIndex >= BATCH_SIZE) renderBatch(currentStartIndex - BATCH_SIZE); };
         document.getElementById('next-btn').onclick = function() { if (currentStartIndex + BATCH_SIZE < spine.length) renderBatch(currentStartIndex + BATCH_SIZE); };
     </script>
