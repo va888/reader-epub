@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>EPUB纯净版阅读器 - 极客商业版</title>
+    <title>EPUB纯净版阅读器 - 深度排版增强版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
+        /* 🎨 核心视觉变量系统 */
         :root {
             --bg: #FAF6EF; --text: #333; --h2-color: #000; --border: #e0e0e0; --toc-bg: #fdfbf7; --divider: rgba(0, 0, 0, 0.1);
         }
@@ -16,19 +17,41 @@
                 --bg: #1A1A1A; --text: #F0F0F0; --h2-color: #FFFFFF; --border: #333333; --toc-bg: #222222; --divider: rgba(255, 255, 255, 0.1);
             }
         }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 0; background-color: var(--bg); color: var(--text); padding-bottom: 120px; padding-top: 60px; transition: background-color 0.5s ease; }
+
+        body { 
+            font-family: "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif; 
+            margin: 0; padding: 0; background-color: var(--bg); color: var(--text); 
+            padding-bottom: 120px; padding-top: 60px; transition: background-color 0.5s ease; 
+        }
+
         .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; z-index: 100; }
         .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 110px; background: var(--bg); box-shadow: 0 -5px 20px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
         #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--toc-bg); padding-left: 10px; color: var(--text); -webkit-appearance: none; }
-        article#viewer { padding: 20px; min-height: 80vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; display: block; }
-        h2 { color: var(--h2-color); font-weight: 900; font-size: 1.8em; margin: 40px 0 30px 0; line-height: 1.4; }
-        p { margin-bottom: 24px; text-align: justify; outline: none; font-size: 22px; line-height: 1.8; }
+        
+        article#viewer { padding: 20px; min-height: 80vh; display: block; }
+        
+        /* 🖋️ 深度排版优化核心 */
+        h2 { 
+            color: var(--h2-color); font-weight: 900; font-size: 1.8em; 
+            margin: 40px 0 30px 0; line-height: 1.4; 
+            text-indent: 0; /* 标题不缩进 */
+        }
+        
+        p { 
+            margin-bottom: 1.2em; /* 段落间距 */
+            text-align: justify; /* 两端对齐 */
+            font-size: 21px; line-height: 1.8; 
+            text-indent: 2em; /* ⚡ 关键：首行缩进两个字符 */
+            word-break: break-all;
+        }
+
         .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), var(--divider), rgba(0, 0, 0, 0)); margin: 50px 0; }
         @keyframes flash { 0% { background-color: rgba(52, 152, 219, 0.3); } 100% { background-color: transparent; } }
         .highlight-target { animation: flash 2s ease-out; }
         .control-group { display: flex; width: 90%; justify-content: space-between; }
         .nav-btn { width: 48%; height: 55px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; color: white; cursor: pointer; }
         #prev-btn { background-color: #bdc3c7; color: #555; } #next-btn { background-color: #3498db; }
+        
         .upload-container { padding: 40px 20px; text-align: center; margin-top: 40px; }
         #resume-btn { display: none; width: 80%; padding: 15px; margin: 0 auto 20px auto; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; }
         #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 200; }
@@ -119,7 +142,7 @@
                     }
                     
                     let hasShownMainTitle = false; 
-                    let lastTitleText = ""; // 记录当前标题，用于正文去重
+                    let lastTitleText = ""; 
                     let cleanParas = paragraphs.map(p => p.replace(/[\u00a0\u200b\u3000]/g, ' ').trim())
                                                .filter(p => p.length > 0 && !JUNK_REGEX.test(p));
 
@@ -128,12 +151,10 @@
                         var isTitleLike = hasKeyword && pText.length < 60;
 
                         if (!hasShownMainTitle && (isTitleLike || (idx === 0 && pText.length < 30))) {
-                            // 🚀 逻辑 1：内部去重 (解决 7:22 的 "第02节...第02节")
                             let words = pText.split(/\s+/);
                             if (words.length > 2 && words[0] === words[words.length-1]) {
                                 pText = words.slice(0, -1).join(' ');
                             }
-                            
                             lastTitleText = pText;
                             let h2 = document.createElement('h2');
                             h2.innerText = pText;
@@ -141,11 +162,9 @@
                             chapterSection.appendChild(h2);
                             hasShownMainTitle = true;
                         } else {
-                            // 🚀 逻辑 2：外部去重 (解决 7:27 的标题回声)
                             let displayP = pText;
                             if (lastTitleText && displayP.startsWith(lastTitleText)) {
                                 displayP = displayP.replace(lastTitleText, "").trim();
-                                // 如果抹除后剩下的是符号或太短，则跳过此段
                                 if (displayP.length < 2 && /^[，。！？；：、]*$/.test(displayP)) return;
                             }
                             
