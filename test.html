@@ -3,23 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>EPUB纯净版阅读器 - 深度排版增强版</title>
+    <title>EPUB 纯净版阅读器 - 深度结构恢复版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        /* 🎨 核心视觉变量系统 */
-        :root {
-            --bg: #FAF6EF; --text: #333; --h2-color: #000; --border: #e0e0e0; --toc-bg: #fdfbf7; --divider: rgba(0, 0, 0, 0.1);
-        }
+        :root { --bg: #FAF6EF; --text: #333; --h2-color: #000; --border: #e0e0e0; --toc-bg: #fdfbf7; --divider: rgba(0, 0, 0, 0.1); }
         @media (prefers-color-scheme: dark) {
-            :root {
-                --bg: #1A1A1A; --text: #F0F0F0; --h2-color: #FFFFFF; --border: #333333; --toc-bg: #222222; --divider: rgba(255, 255, 255, 0.1);
-            }
+            :root { --bg: #1A1A1A; --text: #F0F0F0; --h2-color: #FFFFFF; --border: #333333; --toc-bg: #222222; --divider: rgba(255, 255, 255, 0.1); }
         }
 
         body { 
-            font-family: "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif; 
+            font-family: "PingFang SC", "STHeiti", "Microsoft YaHei", -apple-system, sans-serif; 
             margin: 0; padding: 0; background-color: var(--bg); color: var(--text); 
             padding-bottom: 120px; padding-top: 60px; transition: background-color 0.5s ease; 
         }
@@ -29,20 +24,20 @@
         #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--toc-bg); padding-left: 10px; color: var(--text); -webkit-appearance: none; }
         
         article#viewer { padding: 20px; min-height: 80vh; display: block; }
-        
-        /* 🖋️ 深度排版优化核心 */
+
+        /* 🖋️ 商业级排版指令：强制物理缩进 */
         h2 { 
             color: var(--h2-color); font-weight: 900; font-size: 1.8em; 
-            margin: 40px 0 30px 0; line-height: 1.4; 
-            text-indent: 0; /* 标题不缩进 */
+            margin: 40px 0 30px 0; line-height: 1.4; text-indent: 0 !important; 
         }
         
-        p { 
-            margin-bottom: 1.2em; /* 段落间距 */
-            text-align: justify; /* 两端对齐 */
+        /* 核心：确保段落有间距且首行缩进 */
+        .epub-para { 
+            display: block;
+            margin-bottom: 1.5em !important; 
+            text-align: justify; 
             font-size: 21px; line-height: 1.8; 
-            text-indent: 2em; /* ⚡ 关键：首行缩进两个字符 */
-            word-break: break-all;
+            text-indent: 2em !important; /* 强制两个字符缩进 */
         }
 
         .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), var(--divider), rgba(0, 0, 0, 0)); margin: 50px 0; }
@@ -130,9 +125,6 @@
                 try {
                     let section = spine.get(i);
                     let doc = await section.load(book.load.bind(book));
-                    doc.querySelectorAll('style, script, link, meta').forEach(item => item.remove());
-                    let text = doc.body ? doc.body.innerText : (doc.textContent || "");
-                    let paragraphs = text.split(/\n+/);
                     
                     let chapterSection = document.createElement('section'); 
                     chapterSection.id = 'chapter-' + i;
@@ -141,16 +133,20 @@
                         chapterSection.appendChild(hr); 
                     }
                     
-                    let hasShownMainTitle = false; 
-                    let lastTitleText = ""; 
-                    let cleanParas = paragraphs.map(p => p.replace(/[\u00a0\u200b\u3000]/g, ' ').trim())
-                                               .filter(p => p.length > 0 && !JUNK_REGEX.test(p));
+                    // 🚀 核心优化：直接遍历原始 DOM 节点，保留段落物理结构
+                    let elements = doc.body.querySelectorAll('p, div, h1, h2, h3');
+                    let hasShownMainTitle = false;
+                    let lastTitleText = "";
 
-                    cleanParas.forEach(function(pText, idx) {
+                    elements.forEach((el, idx) => {
+                        let pText = el.innerText.replace(/[\u00a0\u200b\u3000]/g, ' ').trim();
+                        if (pText.length < 1 || JUNK_REGEX.test(pText)) return;
+
                         var hasKeyword = TITLE_KEYWORDS.some(k => pText.includes(k));
                         var isTitleLike = hasKeyword && pText.length < 60;
 
-                        if (!hasShownMainTitle && (isTitleLike || (idx === 0 && pText.length < 30))) {
+                        // 标题去重逻辑
+                        if (!hasShownMainTitle && (isTitleLike || (idx < 3 && pText.length < 30))) {
                             let words = pText.split(/\s+/);
                             if (words.length > 2 && words[0] === words[words.length-1]) {
                                 pText = words.slice(0, -1).join(' ');
@@ -162,20 +158,21 @@
                             chapterSection.appendChild(h2);
                             hasShownMainTitle = true;
                         } else {
-                            let displayP = pText;
-                            if (lastTitleText && displayP.startsWith(lastTitleText)) {
-                                displayP = displayP.replace(lastTitleText, "").trim();
-                                if (displayP.length < 2 && /^[，。！？；：、]*$/.test(displayP)) return;
+                            // 标题回声去重逻辑
+                            if (lastTitleText && pText.startsWith(lastTitleText)) {
+                                pText = pText.replace(lastTitleText, "").trim();
+                                if (pText.length < 2) return;
                             }
                             
-                            if (displayP.length > 0) {
-                                let el = document.createElement('p');
-                                el.innerText = displayP;
-                                if (!hasShownMainTitle && idx === 0) el.setAttribute('data-index', i);
-                                chapterSection.appendChild(el);
-                            }
+                            // 渲染真正的段落
+                            let newP = document.createElement('p');
+                            newP.className = 'epub-para';
+                            newP.innerText = pText;
+                            if (!hasShownMainTitle && idx === 0) newP.setAttribute('data-index', i);
+                            chapterSection.appendChild(newP);
                         }
                     });
+
                     if (chapterSection.hasChildNodes()) viewer.appendChild(chapterSection);
                 } catch (e) { console.error("渲染失败:", i, e); }
             }
