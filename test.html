@@ -3,82 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>EPUB 避难所 - 高清原味版</title>
+    <title>EPUB纯净版阅读器</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        :root { --bg: #FAF6EF; --text: #333; --border: #e0e0e0; }
-        @media (prefers-color-scheme: dark) { :root { --bg: #1A1A1A; --text: #F0F0F0; --border: #333333; } }
+        /* 🎨 核心视觉变量系统：日间原色，夜间极客黑 */
+        :root {
+            --bg: #FAF6EF; 
+            --text: #333; 
+            --h2-color: #000; 
+            --border: #e0e0e0; 
+            --toc-bg: #fdfbf7;
+            --divider: rgba(0, 0, 0, 0.1);
+        }
+
+        /* 🌙 极客级系统自动感光 */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1A1A1A; 
+                --text: #F0F0F0; 
+                --h2-color: #FFFFFF; 
+                --border: #333333; 
+                --toc-bg: #222222;
+                --divider: rgba(255, 255, 255, 0.1);
+            }
+        }
 
         body { 
-            font-family: "PingFang SC", "STHeiti", system-ui, sans-serif; 
-            margin: 0; padding: 0; background-color: var(--bg); color: var(--text); 
-            padding-bottom: 120px; padding-top: 60px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            margin: 0; padding: 0; 
+            background-color: var(--bg); 
+            color: var(--text); 
+            padding-bottom: 120px; padding-top: 60px; 
+            transition: background-color 0.5s ease, color 0.5s ease; /* 丝滑切换动效 */
         }
 
-        .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; z-index: 100; }
-        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 110px; background: var(--bg); border-top: 1px solid var(--border); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
-        #toc-select { width: 100%; height: 40px; font-size: 16px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; }
+        .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; z-index: 100; transition: background 0.5s ease; }
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 110px; background: var(--bg); box-shadow: 0 -5px 20px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; transition: background 0.5s ease; }
+        .ver-tag { position: absolute; top: 5px; left: 5px; font-size: 10px; color: purple; font-weight: bold; z-index: 101; background: rgba(243, 229, 245, 0.5); padding: 2px 4px; border-radius: 4px; opacity: 0.6; }
+        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--toc-bg); padding-left: 10px; -webkit-appearance: none; color: var(--text); }
         
-        article#viewer { padding: 20px; min-height: 80vh; display: block; overflow-x: hidden; }
-
-        /* 🖋️ 核心排版：物理还原 + 强制缩进 */
-        .chapter-container {
-            color: inherit !important;
-            background: transparent !important;
-            /* 🚀 修复：超大字体 */
-            font-size: 26px; 
-            line-height: 1.8;
-            text-align: justify;
-        }
-
-        /* 强制所有段落首行缩进 2 字符 */
-        .chapter-container p, 
-        .chapter-container div { 
-            text-indent: 2em !important; 
-            margin-bottom: 1.5em !important; 
-            display: block !important;
-        }
-
-        /* 标题不缩进 */
-        .chapter-container h1, .chapter-container h2, .chapter-container h3, 
-        .chapter-container h4, .chapter-container h5, .chapter-container h6 {
-            text-indent: 0 !important; font-weight: 900 !important; margin: 1em 0 !important;
-        }
-
-        /* 图片自适应 */
-        .chapter-container img { 
-            max-width: 100% !important; height: auto !important; 
-            display: block; margin: 20px auto; text-indent: 0 !important;
-        }
-
-        .chapter-divider { border: 0; height: 1px; background: var(--divider); margin: 60px 0; opacity: 0.2; }
-        .nav-btn { width: 48%; height: 55px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; color: white; cursor: pointer; }
-        #prev-btn { background-color: #bdc3c7; color: #555; } #next-btn { background-color: #3498db; }
+        article#viewer { background: var(--bg); padding: 20px 20px; min-height: 80vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; display: block; transition: background 0.5s ease; }
         
-        .upload-container { padding: 40px 20px; text-align: center; }
-        #resume-btn { display: none; width: 80%; padding: 15px; margin-bottom: 25px; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; }
-        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); color: white; padding: 25px; border-radius: 12px; display: none; z-index: 200; }
+        h2 { color: var(--h2-color); font-weight: 900; font-size: 1.8em; margin-top: 40px; margin-bottom: 30px; line-height: 1.4; }
+        p { margin-bottom: 24px; text-align: justify; outline: none; font-size: 22px; font-weight: normal; line-height: 1.8; }
+        
+        .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), var(--divider), rgba(0, 0, 0, 0)); margin-top: 50px; margin-bottom: 50px; }
+        @keyframes flash { 0% { background-color: #ffe69c; } 100% { background-color: transparent; } }
+        .highlight-target { animation: flash 2s ease-out; }
+        .control-group { display: flex; width: 90%; justify-content: space-between; align-items: center; }
+        .nav-btn { width: 48%; height: 55px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; color: white; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        #prev-btn { background-color: #bdc3c7; color: #555; } 
+        #next-btn { background-color: #3498db; }
+        .upload-container { padding: 40px 20px; text-align: center; margin-top: 40px; }
+        #resume-btn { display: none; width: 80%; padding: 15px; margin: 0 auto 20px auto; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; }
+        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 200; }
     </style>
 </head>
 <body>
-    <header class="header"><select id="toc-select" disabled><option>📖 跳转目录...</option></select></header>
+    <header class="header">
+        <div class="ver-tag"></div>
+        <select id="toc-select" disabled><option></option></select>
+    </header>
+
     <div class="upload-container" id="upload-area">
+        <h2>EPUB纯净版阅读器</h2>
         <button id="resume-btn">🔄 继续阅读</button>
-        <label for="file-input" style="color: #3498db; cursor: pointer; font-weight: bold; font-size: 20px;">📂 重新加载测试书籍</label>
-        <input type="file" id="file-input" style="display: none;">
+        <div style="margin-top: 20px;">
+            <label for="file-input" style="color: #3498db; cursor: pointer;">📂 打开书籍</label>
+            <input type="file" id="file-input" style="display: none;">
+        </div>
     </div>
+
     <article id="viewer"></article>
+
     <footer class="footer">
         <div id="page-info" style="font-size:12px; color:#999; margin-bottom:8px;"></div>
-        <div class="control-group"><button id="prev-btn" class="nav-btn" disabled>上一组</button><button id="next-btn" class="nav-btn" disabled>下一组</button></div>
+        <div class="control-group">
+            <button id="prev-btn" class="nav-btn" disabled>上一组</button>
+            <button id="next-btn" class="nav-btn" disabled>下一组</button>
+        </div>
     </footer>
-    <div id="loading">正在高保真还原排版...</div>
+    <div id="loading">处理中...</div>
 
     <script>
-        var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 5;
-        localforage.config({ name: 'shelter_test_v2' });
+        var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 10;
+        var TITLE_KEYWORDS = ["第", "章", "Chapter", "序", "前言", "Prologue", "Introduction", "卷", "部", "节", "Part"];
+        var JUNK_REGEX = /^(cover|unknown|未知|封面|title page|copyright|content|目录|前言|author|book|page|\d+$)/i;
+
+        localforage.config({ name: 'listenflow_db' });
 
         window.onload = function() { checkSavedBook(); };
         async function checkSavedBook() {
@@ -106,84 +120,155 @@
                         var flatten = function(items) {
                             items.forEach(function(item) {
                                 var option = document.createElement('option');
-                                option.text = item.label.trim(); option.value = item.href;
+                                option.text = item.label.trim(); option.value = item.href + "|" + item.label.trim();
                                 select.add(option); if (item.subitems) flatten(item.subitems);
                             });
                         };
                         flatten(toc.toc); select.disabled = false;
-                        select.onchange = function() { if(this.value !== "-1") loadChapterByMatch(this.value); };
+                        select.onchange = function() {
+                            if(this.value !== "-1") { var parts = this.value.split('|'); loadChapterByMatch(parts[0], parts[1]); }
+                        };
                     });
                     document.getElementById('upload-area').style.display = 'none';
                     document.getElementById('prev-btn').disabled = document.getElementById('next-btn').disabled = false;
-                    var startIdx = isResume ? (Math.floor(parseInt(localStorage.getItem('exactIndex_test') || 0) / BATCH_SIZE) * BATCH_SIZE) : 0;
-                    renderBatch(startIdx);
+                    var startIdx = isResume ? (Math.floor(parseInt(localStorage.getItem('exactChapterIndex') || 0) / BATCH_SIZE) * BATCH_SIZE) : 0;
+                    renderBatch(startIdx, isResume ? parseInt(localStorage.getItem('exactChapterIndex')) : null);
                 });
             }; reader.readAsArrayBuffer(data);
         }
 
-        async function renderBatch(startIndex) {
+        async function renderBatch(startIndex, targetScrollIndex = null) {
             var viewer = document.getElementById('viewer'); viewer.innerHTML = '';
             currentStartIndex = startIndex;
-            document.getElementById('loading').style.display = 'block';
             var endIndex = Math.min(startIndex + BATCH_SIZE, spine.length);
-            document.getElementById('page-info').innerText = `章节 ${startIndex + 1} - ${endIndex}`;
+            document.getElementById('page-info').innerText = `第 ${startIndex + 1} - ${endIndex} 章`;
             
             for (let i = startIndex; i < endIndex; i++) {
                 try {
                     let section = spine.get(i);
-                    // 🚀 核心：使用 load() 获取原始文档
                     let doc = await section.load(book.load.bind(book));
+                    doc.querySelectorAll('style, script, link, meta').forEach(item => item.remove());
+                    let text = doc.body ? doc.body.innerText : (doc.textContent || "");
+                    let paragraphs = text.split(/\n+/);
                     
-                    let chapterWrapper = document.createElement('div');
-                    chapterWrapper.className = 'chapter-container';
-                    chapterWrapper.id = 'chapter-' + i;
+                    let chapterSection = document.createElement('section'); 
+                    chapterSection.id = 'chapter-' + i;
+                    if (i > startIndex) { let hr = document.createElement('hr'); hr.className = 'chapter-divider'; chapterSection.appendChild(hr); }
+                    
+                    let titleBuffer = ""; 
+                    let titleIndex = -1;
+                    let hasShownMainTitle = false;
+                    let lastRenderedTitleText = ""; // 记录已渲染的标题内容
 
-                    // 处理图片路径，即使失败也不中断渲染
-                    let images = doc.querySelectorAll('img');
-                    for (let img of images) {
-                        try {
-                            let src = img.getAttribute('src');
-                            if (src && !src.startsWith('blob:')) {
-                                let absolutePath = section.url(src);
-                                if (absolutePath.startsWith('/')) absolutePath = absolutePath.substring(1);
-                                let blobUrl = await book.archive.createUrl(absolutePath);
-                                if (blobUrl) img.src = blobUrl;
+                    let cleanParas = paragraphs.map(p => p.replace(/[\u00a0\u200b\u3000]/g, ' ').trim())
+                                               .filter(p => p.length > 0 && !JUNK_REGEX.test(p));
+
+                    cleanParas.forEach(function(pText, idx) {
+                        var hasKeyword = TITLE_KEYWORDS.some(k => pText.includes(k));
+                        if (!hasShownMainTitle && titleBuffer === "" && !hasKeyword) { if (idx < 5) return; }
+                        var isShortLine = pText.length < 50 && !/[。.!！?？”"]$/.test(pText);
+                        let splitTitle = null, splitBody = null;
+                        if (hasKeyword && pText.length >= 50) {
+                            let splitIdx = pText.indexOf(' ');
+                            if (splitIdx > 0 && splitIdx < 30) {
+                                splitTitle = pText.substring(0, splitIdx);
+                                splitBody = pText.substring(splitIdx + 1);
+                                isShortLine = true; 
                             }
-                        } catch(e) {}
-                    }
+                        }
+                        if (idx < 10 && !hasShownMainTitle) {
+                            if (splitTitle) {
+                                if (titleBuffer !== "") titleBuffer += " ";
+                                titleBuffer += splitTitle;
+                                
+                                // 🚀 逻辑修改：标题内部分词去重 (解决图 3 问题)
+                                lastRenderedTitleText = Array.from(new Set(titleBuffer.split(/\s+/))).join(' ');
+                                
+                                let h2 = document.createElement('h2'); h2.innerText = lastRenderedTitleText; h2.setAttribute('data-index', i);
+                                chapterSection.appendChild(h2);
+                                
+                                // 正文渲染前检查回声
+                                let cleanBody = splitBody;
+                                if(lastRenderedTitleText && cleanBody.startsWith(lastRenderedTitleText)) {
+                                    cleanBody = cleanBody.replace(lastRenderedTitleText, "").trim();
+                                }
+                                if(cleanBody) {
+                                    let p = document.createElement('p'); p.innerText = cleanBody; chapterSection.appendChild(p);
+                                }
+                                
+                                hasShownMainTitle = true; titleBuffer = ""; return; 
+                            } 
+                            else if (hasKeyword || (titleBuffer !== "" && isShortLine)) {
+                                if (titleBuffer !== "") titleBuffer += " "; titleBuffer += pText;
+                                if (titleIndex === -1) titleIndex = i; return; 
+                            }
+                        }
+                        if (titleBuffer !== "") {
+                            // 🚀 逻辑修改：标题内部分词去重 (解决图 3 问题)
+                            lastRenderedTitleText = Array.from(new Set(titleBuffer.split(/\s+/))).join(' ');
+                            
+                            let h2 = document.createElement('h2'); h2.innerText = lastRenderedTitleText; h2.setAttribute('data-index', titleIndex);
+                            chapterSection.appendChild(h2); titleBuffer = ""; hasShownMainTitle = true;
+                        }
+                        
+                        // 🚀 逻辑修改：正文回声消除 (解决图 4 问题)
+                        let finalParaText = pText;
+                        if (hasShownMainTitle && lastRenderedTitleText && finalParaText.startsWith(lastRenderedTitleText)) {
+                             // 如果段落开头和标题完全一样，且剩余长度较短（说明是纯回声），则跳过
+                             if (finalParaText.length < lastRenderedTitleText.length + 5) return;
+                             // 否则只剔除重复头部
+                             finalParaText = finalParaText.replace(lastRenderedTitleText, "").trim();
+                        }
 
-                    // 注入原始 HTML 内容
-                    chapterWrapper.innerHTML = doc.body.innerHTML;
+                        let el = document.createElement('p'); el.innerText = finalParaText;
+                        if (titleIndex === -1 && !hasShownMainTitle) { el.setAttribute('data-index', i); titleIndex = -2; }
+                        chapterSection.appendChild(el);
+                    });
                     
-                    if (i > startIndex) { 
-                        let hr = document.createElement('hr'); hr.className = 'chapter-divider'; 
-                        chapterWrapper.prepend(hr); 
+                    if (titleBuffer !== "") {
+                        let finalTitle = Array.from(new Set(titleBuffer.split(/\s+/))).join(' ');
+                        let h2 = document.createElement('h2'); h2.innerText = finalTitle; h2.setAttribute('data-index', titleIndex);
+                        chapterSection.appendChild(h2);
                     }
-                    viewer.appendChild(chapterWrapper);
+                    if (chapterSection.hasChildNodes()) viewer.appendChild(chapterSection);
                 } catch (e) {
-                    console.error(e);
-                    // 兜底策略：如果 HTML 渲染失败，尝试提取纯文本
-                    try {
-                        let section = spine.get(i);
-                        let text = await book.load(section.href);
-                        let errNode = document.createElement('div');
-                        errNode.className = 'chapter-container';
-                        errNode.innerText = `[章节 ${i+1} 格式复杂，已切换至兼容模式]\n\n` + text;
-                        viewer.appendChild(errNode);
-                    } catch(innerE) {}
+                    // 🚀 针对图 5 的解析失败提示
+                    let errNode = document.createElement('div');
+                    errNode.style.color = 'red';
+                    errNode.style.padding = '10px';
+                    errNode.innerText = `[章节 ${i+1} 解析失败，请尝试下一组]`;
+                    viewer.appendChild(errNode);
                 }
             }
             document.getElementById('loading').style.display = 'none';
-            window.scrollTo(0, 0);
+            if (targetScrollIndex !== null) {
+                setTimeout(() => {
+                    var target = document.querySelector(`[data-index='${targetScrollIndex}']`);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'auto', block: 'start' }); window.scrollBy(0, -70);
+                        target.classList.add('highlight-target');
+                        target.setAttribute('tabindex', '-1'); target.focus();
+                        try {
+                            const range = document.createRange(); const sel = window.getSelection();
+                            range.selectNodeContents(target); sel.removeAllRanges(); sel.addRange(range);
+                        } catch(err) {}
+                    }
+                }, 250);
+            }
         }
 
-        function loadChapterByMatch(href) {
-            var targetIndex = -1; 
-            var spineItem = book.spine.get(href);
-            if (spineItem) { 
-                targetIndex = spineItem.index; 
-                localStorage.setItem('exactIndex_test', targetIndex);
-                renderBatch(Math.floor(targetIndex / BATCH_SIZE) * BATCH_SIZE);
+        function loadChapterByMatch(href, label) {
+            var targetIndex = -1; var spineItem = book.spine.get(href);
+            if (spineItem) { targetIndex = spineItem.index; } 
+            else {
+                var targetName = decodeURIComponent(href.split('#')[0]).split('/').pop();
+                for(var i=0; i<spine.length; i++) {
+                    if (decodeURIComponent(spine[i].href).indexOf(targetName) !== -1) { targetIndex = i; break; }
+                }
+            }
+            if(targetIndex !== -1) {
+                localStorage.setItem('exactChapterIndex', targetIndex);
+                renderBatch(Math.floor(targetIndex / BATCH_SIZE) * BATCH_SIZE, targetIndex);
             }
         }
         document.getElementById('prev-btn').onclick = function() { if (currentStartIndex >= BATCH_SIZE) renderBatch(currentStartIndex - BATCH_SIZE); };
