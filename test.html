@@ -2,15 +2,14 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>EPUB纯净版阅读器</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
         :root {
-            --bg: #FAF6EF; --text: #333; --border: #e2e2e2; 
-            --accent: #57ACFF; 
+            --bg: #FAF6EF; --text: #333; --border: #e2e2e2; --accent: #57ACFF; 
         }
         @media (prefers-color-scheme: dark) {
             :root { --bg: #1A1A1A; --text: #F0F0F0; --border: #333333; --accent: #80CFFF; }
@@ -19,26 +18,27 @@
         body { 
             font-family: "PingFang SC", "STHeiti", -apple-system, sans-serif; 
             margin: 0; padding: 0; background-color: var(--bg); color: var(--text); 
-            padding-bottom: 70px; padding-top: 55px; transition: background-color 0.5s ease;
+            padding-bottom: 55px; padding-top: 55px; transition: background-color 0.5s ease;
+            text-align: center; /* 🚀 基础居中 */
         }
 
-        .header { position: fixed; top: 0; left: 0; right: 0; height: 55px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 12px; z-index: 100; }
+        .header { position: fixed; top: 0; left: 0; right: 0; height: 50px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 12px; z-index: 100; }
         
-        /* 🚀 极致压缩 Footer：底部留 10px */
+        /* 🚀 极致贴底 Footer：0 间隙 */
         .footer { 
-            position: fixed; bottom: 0; left: 0; right: 0; height: 65px; 
+            position: fixed; bottom: 0; left: 0; right: 0; height: 50px; 
             background: var(--bg); border-top: 1px solid var(--border); 
-            display: flex; justify-content: center; align-items: center; 
-            z-index: 100; flex-direction: column; padding-bottom: 10px; 
+            display: flex; justify-content: center; align-items: flex-end; 
+            z-index: 100; padding: 0; margin: 0;
         }
         
-        #toc-select { width: 100%; height: 38px; font-size: 15px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); padding-left: 8px; -webkit-appearance: none; }
+        #toc-select { width: 100%; height: 36px; font-size: 15px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); padding-left: 8px; -webkit-appearance: none; }
         
-        article#viewer { padding: 0 20px; min-height: 80vh; display: block; overflow-x: hidden; }
+        article#viewer { padding: 0 20px; min-height: 80vh; display: block; overflow-x: hidden; text-align: left; /* 🚀 正文保持左对齐 */ }
         
-        /* 🖋️ 章节字号：28px/24px/20px */
+        /* 🖋️ 章节字号：28px/24px/20px，居中并强制着色 */
         .apple-heading { 
-            color: var(--accent) !important; text-align: center; font-weight: bold; 
+            color: var(--accent) !important; text-align: center !important; font-weight: bold; 
             margin: 1.2em 0 0.8em 0; line-height: 1.3; display: block; text-indent: 0 !important;
         }
         .chapter-title { font-size: 28px; } 
@@ -47,37 +47,37 @@
 
         .body-para { 
             font-size: 20px; line-height: 1.7; text-align: justify; 
-            text-indent: 2em !important; margin-bottom: 1.1em; font-weight: normal;
+            text-indent: 2em !important; margin-bottom: 1.1em; font-weight: normal; color: var(--text);
         }
 
-        .chapter-divider { border: 0; height: 1px; background: var(--border); margin: 35px 0; }
+        .chapter-divider { border: 0; height: 1px; background: var(--border); margin: 30px 0; }
 
-        /* 🚀 按钮极致压缩 */
-        .control-group { display: flex; width: 94%; justify-content: space-between; align-items: center; }
+        /* 🚀 按钮极致贴底按钮 */
+        .control-group { display: flex; width: 100%; justify-content: space-between; align-items: flex-end; }
         .nav-btn { 
-            width: 48%; height: 42px; border: none; border-radius: 10px; 
+            width: 50%; height: 50px; border: none; border-radius: 0; /* 🚀 矩形贴合 */
             font-size: 16px; font-weight: bold; color: white; cursor: pointer; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
         }
         #prev-btn { background-color: #bdc3c7; color: #555; } 
         #next-btn { background-color: #3498db; }
         
         .upload-container { padding: 40px 20px; text-align: center; margin-top: 40px; }
-        #resume-btn { display: none; width: 80%; padding: 14px; margin-bottom: 20px; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 17px; font-weight: bold; }
-        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 200; }
+        .upload-container h2 { font-size: 26px; font-weight: 900; color: var(--text); margin-bottom: 30px; }
+        #resume-btn { display: none; width: 85%; padding: 15px; margin: 0 auto 30px auto; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; }
+        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 200; text-align: center; }
         
         @keyframes flash { 0% { background-color: rgba(87, 172, 255, 0.2); } 100% { background-color: transparent; } }
-        .highlight-target { animation: flash 2s ease-out; border-radius: 4px; }
+        .highlight-target { animation: flash 2s ease-out; }
     </style>
 </head>
 <body>
     <header class="header"><select id="toc-select" disabled><option>📖 加载目录...</option></select></header>
 
     <div class="upload-container" id="upload-area">
-        <h2 style="font-weight: 900;">EPUB 纯净版阅读器</h2>
+        <h2>EPUB 纯净版阅读器</h2>
         <button id="resume-btn">🔄 继续阅读</button>
         <div style="margin-top: 20px;">
-            <label for="file-input" style="color: #3498db; cursor: pointer; font-weight: bold;">📂 导入书籍</label>
+            <label for="file-input" style="color: #3498db; cursor: pointer; font-weight: bold; font-size: 18px;">📂 导入书籍</label>
             <input type="file" id="file-input" style="display: none;">
         </div>
     </div>
@@ -85,13 +85,12 @@
     <article id="viewer"></article>
 
     <footer class="footer">
-        <div id="page-info" style="font-size:9px; color:#999; margin-bottom:2px;"></div>
         <div class="control-group">
             <button id="prev-btn" class="nav-btn" disabled>上一组</button>
             <button id="next-btn" class="nav-btn" disabled>下一组</button>
         </div>
     </footer>
-    <div id="loading">正在锁定 10px 底部...</div>
+    <div id="loading">正在极致对齐...</div>
 
     <script>
         var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 10;
@@ -150,7 +149,6 @@
             currentStartIndex = startIndex;
             document.getElementById('loading').style.display = 'block';
             var endIndex = Math.min(startIndex + BATCH_SIZE, spine.length);
-            document.getElementById('page-info').innerText = `章节 ${startIndex + 1} - ${endIndex}`;
             
             for (let i = startIndex; i < endIndex; i++) {
                 try {
@@ -205,22 +203,16 @@
                 if (targetLabel) {
                     const allLabels = document.querySelectorAll('[data-label]');
                     for (let el of allLabels) {
-                        if (el.getAttribute('data-label').includes(targetLabel) || targetLabel.includes(el.getAttribute('data-label'))) {
-                            target = el; break;
-                        }
+                        if (el.getAttribute('data-label').includes(targetLabel)) { target = el; break; }
                     }
                 }
-                if (!target && targetScrollIndex !== null) {
-                    target = document.querySelector(`[data-idx='${targetScrollIndex}']`);
-                }
+                if (!target && targetScrollIndex !== null) target = document.querySelector(`[data-idx='${targetScrollIndex}']`);
 
                 if (target) {
                     target.scrollIntoView({ behavior: 'auto', block: 'start' }); 
-                    window.scrollBy(0, -60); 
+                    window.scrollBy(0, -55); 
                     target.classList.add('highlight-target');
-                } else if (!targetScrollIndex) {
-                    window.scrollTo(0, 0);
-                }
+                } else { window.scrollTo(0, 0); }
             }, 200);
         }
 
