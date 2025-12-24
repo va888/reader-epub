@@ -23,7 +23,7 @@
 
         .header { position: fixed; top: 0; left: 0; right: 0; height: 50px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 12px; z-index: 100; }
         
-        /* 🚀 底部极致布局：离地 10px */
+        /* 🚀 极致压缩 Footer：离地 10px */
         .footer { 
             position: fixed; bottom: 0; left: 0; right: 0; height: 80px; 
             background: var(--bg); border-top: 1px solid var(--border); 
@@ -52,16 +52,11 @@
             font-weight: normal !important; color: var(--text) !important; display: block !important;
         }
 
-        /* 🚀 图片高保真渲染 */
-        img { 
-            max-width: 100% !important; height: auto !important; 
-            display: block !important; margin: 20px auto !important; 
-            text-indent: 0 !important; border-radius: 8px !important;
-        }
+        img { max-width: 100% !important; height: auto !important; display: block !important; margin: 20px auto !important; text-indent: 0 !important; border-radius: 8px !important; }
 
         .chapter-divider { border: 0; height: 1px; background: var(--border); margin: 40px 0; }
 
-        /* 🚀 原始按钮样式回归 */
+        /* 🚀 原始按钮样式：圆角与阴影 */
         .control-group { display: flex; width: 92%; justify-content: space-between; align-items: center; }
         .nav-btn { 
             width: 48%; height: 48px; border: none; border-radius: 12px; 
@@ -71,8 +66,14 @@
         #prev-btn { background-color: #bdc3c7; color: #555; } 
         #next-btn { background-color: #3498db; }
         
-        .upload-container { padding: 80px 20px; text-align: center; }
-        #resume-btn { display: none; width: 85%; padding: 15px; margin-bottom: 30px; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; }
+        /* 🚀 首页极致居中对齐 */
+        .upload-container { 
+            padding-top: 120px; text-align: center; 
+            display: flex; flex-direction: column; align-items: center; 
+        }
+        .upload-container h2 { font-size: 26px; font-weight: 900; color: var(--text); margin-bottom: 40px; }
+        #resume-btn { display: none; width: 80%; max-width: 320px; padding: 15px; margin-bottom: 30px; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        
         #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); color: white; padding: 25px; border-radius: 12px; display: none; z-index: 200; text-align: center; font-weight: bold; }
         
         @keyframes flash { 0% { background-color: rgba(87, 172, 255, 0.2); } 100% { background-color: transparent; } }
@@ -80,12 +81,12 @@
     </style>
 </head>
 <body>
-    <header class="header"><select id="toc-select" disabled><option>📖 跳转目录...</option></select></header>
+    <header class="header"><select id="toc-select" disabled><option>📖 加载目录...</option></select></header>
 
     <div class="upload-container" id="upload-area">
-        <h2 style="font-weight: 900;">EPUB 纯净版阅读器</h2>
+        <h2>EPUB 纯净版阅读器</h2>
         <button id="resume-btn">🔄 继续阅读</button>
-        <div style="margin-top: 20px;">
+        <div style="margin-top: 10px;">
             <label for="file-input" style="color: #3498db; cursor: pointer; font-weight: bold; font-size: 20px;">📂 导入书籍</label>
             <input type="file" id="file-input" style="display: none;">
         </div>
@@ -100,7 +101,7 @@
             <button id="next-btn" class="nav-btn" disabled>下一组</button>
         </div>
     </footer>
-    <div id="loading">正在高保真解析图片与跳转...</div>
+    <div id="loading">正在极致对齐排版...</div>
 
     <script>
         var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 10;
@@ -133,7 +134,7 @@
                             items.forEach(function(item) {
                                 var option = document.createElement('option');
                                 option.text = item.label.trim(); 
-                                option.value = item.href; // 🚀 使用完整 Href 用于底层跳转
+                                option.value = item.href; 
                                 select.add(option); if (item.subitems) flatten(item.subitems);
                             });
                         };
@@ -164,34 +165,36 @@
                     let chapterWrapper = document.createElement('div');
                     chapterWrapper.className = 'chapter-wrapper';
                     chapterWrapper.id = 'sec-' + i;
-
-                    // 🚀 核心：修复图片路径
-                    let images = doc.querySelectorAll('img');
-                    for (let img of images) {
-                        let src = img.getAttribute('src');
-                        if (src && !src.startsWith('blob:') && !src.startsWith('http')) {
-                            let absolutePath = section.url(src);
-                            if (absolutePath.startsWith('/')) absolutePath = absolutePath.substring(1);
-                            try {
-                                let blobUrl = await book.archive.createUrl(absolutePath);
-                                if (blobUrl) img.setAttribute('src', blobUrl);
-                            } catch(e) {}
-                        }
-                    }
-
-                    // 🚀 核心：物理还原 HTML 以支持图片，同时应用样式
-                    chapterWrapper.innerHTML = (doc.body ? doc.body.innerHTML : (doc.documentElement.innerHTML || ""));
-                    
                     if (i > startIndex) { 
                         let hr = document.createElement('hr'); hr.className = 'chapter-divider'; 
-                        chapterWrapper.prepend(hr); 
+                        chapterWrapper.appendChild(hr); 
                     }
+
+                    // 🚀 核心修复：先渲染 HTML，防止白屏
+                    let content = (doc.body ? doc.body.innerHTML : (doc.documentElement.innerHTML || ""));
+                    chapterWrapper.innerHTML += content;
                     viewer.appendChild(chapterWrapper);
-                } catch (e) { console.error(e); }
+
+                    // 🚀 异步修复图片路径，不阻塞文字
+                    setTimeout(async () => {
+                        let images = chapterWrapper.querySelectorAll('img');
+                        for (let img of images) {
+                            let src = img.getAttribute('src');
+                            if (src && !src.startsWith('blob:') && !src.startsWith('http')) {
+                                try {
+                                    let absolutePath = section.url(src);
+                                    if (absolutePath.startsWith('/')) absolutePath = absolutePath.substring(1);
+                                    let blobUrl = await book.archive.createUrl(absolutePath);
+                                    if (blobUrl) img.src = blobUrl;
+                                } catch(e) {}
+                            }
+                        }
+                    }, 0);
+
+                } catch (e) { console.error("章节渲染异常:", i, e); }
             }
             document.getElementById('loading').style.display = 'none';
 
-            // 🚀 精准跳转执行
             if (targetScrollIndex !== null) {
                 setTimeout(() => {
                     let target = document.getElementById('sec-' + targetScrollIndex);
@@ -200,14 +203,16 @@
                         window.scrollBy(0, -55); 
                         target.classList.add('highlight-target');
                     }
-                }, 350);
+                }, 300);
             } else { window.scrollTo(0, 0); }
         }
 
-        /* 🚀 底层跳转匹配 */
+        /* 🚀 终极跳转：兼容相对路径与 CFI */
         function loadChapterByMatch(href) {
             var targetIndex = -1; 
-            var spineItem = book.spine.get(href); // 🚀 直接使用底层 CFI 匹配，确保跳转不失效
+            // 规范化 href，移除目录可能带有的 ../ 层级
+            const cleanHref = href.split('#')[0];
+            var spineItem = book.spine.get(cleanHref); 
             
             if (spineItem) { 
                 targetIndex = spineItem.index; 
