@@ -8,15 +8,15 @@
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        /* 🎨 视觉变量：iPhone 14:53 方案 */
+        /* 🎨 14:53 视觉方案：更浅更清爽的蓝 */
         :root {
             --bg: #FAF6EF; --text: #333; --border: #e2e2e2; 
-            --accent: #57ACFF; /* 轻盈日间蓝 */
+            --accent: #57ACFF; /* 轻盈蓝 */
         }
         @media (prefers-color-scheme: dark) {
             :root { 
                 --bg: #1A1A1A; --text: #F0F0F0; --border: #333333; 
-                --accent: #80CFFF; /* 轻盈夜间蓝 */
+                --accent: #80CFFF; 
             }
         }
 
@@ -33,24 +33,25 @@
         
         article#viewer { padding: 0 20px; min-height: 80vh; display: block; overflow-x: hidden; }
         
-        /* 🖋️ 标题排版 */
+        /* 🖋️ iPhone 级标题排版校准 */
         .apple-heading { 
             color: var(--accent) !important; text-align: center; font-weight: bold; 
             margin: 1.6em 0 1.2em 0; line-height: 1.4; display: block; text-indent: 0 !important;
         }
-        .chapter-title { font-size: 32px; } /* 大章 32px */
-        .section-title { font-size: 28px; } /* 小节 28px */
+        .chapter-title { font-size: 32px; } /* 大章 */
+        .section-title { font-size: 28px; } /* 小节 */
         .part-title { font-size: 24px; opacity: 0.9; }
 
-        /* 🖋️ 正文排版 */
         .body-para { 
-            font-size: 22px; line-height: 1.8; text-align: justify; 
-            text-indent: 2em !important; margin-bottom: 1.2em; font-weight: normal;
+            font-size: 22px; /* 正文 */
+            line-height: 1.8; text-align: justify; 
+            text-indent: 2em !important; /* 物理缩进 */
+            margin-bottom: 1.2em; font-weight: normal;
         }
 
         .chapter-divider { border: 0; height: 1px; background: var(--border); margin: 60px 0; }
 
-        /* 🚀 还原原始按钮样式 */
+        /* 🚀 还原原始按钮样式：带阴影与圆角 */
         .control-group { display: flex; width: 90%; justify-content: space-between; align-items: center; }
         .nav-btn { 
             width: 48%; height: 55px; border: none; border-radius: 12px; 
@@ -74,7 +75,7 @@
 </head>
 <body>
     <header class="header">
-        <select id="toc-select" disabled><option>📖 正在加载目录...</option></select>
+        <select id="toc-select" disabled><option>📖 跳转目录...</option></select>
     </header>
 
     <div class="upload-container" id="upload-area">
@@ -129,12 +130,17 @@
                         var flatten = function(items) {
                             items.forEach(function(item) {
                                 var option = document.createElement('option');
-                                option.text = item.label.trim(); option.value = item.href;
+                                // 🚀 记录目录文字，用于后续精准锚点定位
+                                option.text = item.label.trim(); 
+                                option.value = item.href + "|" + item.label.trim();
                                 select.add(option); if (item.subitems) flatten(item.subitems);
                             });
                         };
                         flatten(toc.toc); select.disabled = false;
-                        select.onchange = function() { if(this.value !== "-1") loadChapterByMatch(this.value); };
+                        select.onchange = function() { if(this.value !== "-1") {
+                            const [href, label] = this.value.split('|');
+                            loadChapterByMatch(href, label); 
+                        }};
                     });
                     document.getElementById('upload-area').style.display = 'none';
                     document.getElementById('prev-btn').disabled = document.getElementById('next-btn').disabled = false;
@@ -145,7 +151,7 @@
             }; reader.readAsArrayBuffer(data);
         }
 
-        async function renderBatch(startIndex, targetScrollIndex = null) {
+        async function renderBatch(startIndex, targetScrollIndex = null, targetLabel = null) {
             var viewer = document.getElementById('viewer'); viewer.innerHTML = '';
             currentStartIndex = startIndex;
             document.getElementById('loading').style.display = 'block';
@@ -161,7 +167,6 @@
                     let paragraphs = text.split(/\n+/);
                     
                     let chapterSection = document.createElement('section'); 
-                    chapterSection.id = 'sec-idx-' + i;
                     if (i > startIndex) { let hr = document.createElement('hr'); hr.className = 'chapter-divider'; chapterSection.appendChild(hr); }
                     
                     let lastTitleText = ""; 
@@ -182,8 +187,9 @@
                             if (isChapter) el.classList.add('chapter-title');
                             if (isSection) el.classList.add('section-title');
                             el.innerText = pText;
-                            // 为跳转绑定锚点，兼容小节名跳转
-                            el.setAttribute('data-text', pText);
+                            
+                            // 🚀 核心：给标题挂上文字标记，支持小节精准跳转
+                            el.setAttribute('data-label', pText);
                             el.setAttribute('data-idx', i);
                             chapterSection.appendChild(el);
                         } else {
@@ -202,28 +208,30 @@
             }
             document.getElementById('loading').style.display = 'none';
 
-            // 🚀 目录跳转定位逻辑
-            if (targetScrollIndex !== null) {
-                setTimeout(() => {
-                    // 优先匹配具体的 index 标记
-                    var target = document.querySelector(`[data-idx='${targetScrollIndex}']`);
-                    if (target) {
-                        target.scrollIntoView({ behavior: 'auto', block: 'start' }); 
-                        window.scrollBy(0, -70); 
-                        target.classList.add('highlight-target');
-                    }
-                }, 150);
-            } else {
-                window.scrollTo(0, 0);
-            }
+            // 🚀 精准跳转定位：优先匹配目录文字，次之匹配章节索引
+            setTimeout(() => {
+                let target = null;
+                if (targetLabel) {
+                    // 尝试匹配目录中的精准文字
+                    target = document.querySelector(`[data-label*="${targetLabel}"]`) || document.querySelector(`[data-label="${targetLabel}"]`);
+                }
+                if (!target && targetScrollIndex !== null) {
+                    target = document.querySelector(`[data-idx='${targetScrollIndex}']`);
+                }
+
+                if (target) {
+                    target.scrollIntoView({ behavior: 'auto', block: 'start' }); 
+                    window.scrollBy(0, -70); 
+                    target.classList.add('highlight-target');
+                } else if (!targetScrollIndex) {
+                    window.scrollTo(0, 0);
+                }
+            }, 200);
         }
 
-        /* 🚀 核心修复：支持锚点与小节精准跳转 */
-        function loadChapterByMatch(href) {
-            const parts = href.split('#');
-            const baseHref = parts[0];
-            const anchor = parts[1];
-            
+        /* 🚀 物理修复：解构 Href 并配合目录文字执行跳转 */
+        function loadChapterByMatch(href, label) {
+            const baseHref = href.split('#')[0];
             var targetIndex = -1; 
             var spineItem = book.spine.get(baseHref); 
             
@@ -231,18 +239,8 @@
                 targetIndex = spineItem.index; 
                 localStorage.setItem('exactIdx', targetIndex);
                 
-                // 如果目标章节已在当前批次中，直接滚动
-                if (targetIndex >= currentStartIndex && targetIndex < currentStartIndex + BATCH_SIZE) {
-                    const target = document.querySelector(`[data-idx='${targetIndex}']`);
-                    if (target) {
-                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        window.scrollBy(0, -70);
-                        target.classList.add('highlight-target');
-                        return;
-                    }
-                }
-                // 否则，加载新批次
-                renderBatch(Math.floor(targetIndex / BATCH_SIZE) * BATCH_SIZE, targetIndex);
+                // 加载批次并传递目录文字（Label）用于小节锚点匹配
+                renderBatch(Math.floor(targetIndex / BATCH_SIZE) * BATCH_SIZE, targetIndex, label);
             }
         }
 
