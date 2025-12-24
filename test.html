@@ -18,66 +18,68 @@
         body { 
             font-family: "PingFang SC", "STHeiti", -apple-system, sans-serif; 
             margin: 0; padding: 0; background-color: var(--bg); color: var(--text); 
-            padding-bottom: 55px; padding-top: 55px; transition: background-color 0.5s ease;
-            text-align: center; /* 🚀 基础居中 */
+            padding-bottom: 90px; padding-top: 60px; transition: background-color 0.5s ease;
         }
 
-        .header { position: fixed; top: 0; left: 0; right: 0; height: 50px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 12px; z-index: 100; }
+        .header { position: fixed; top: 0; left: 0; right: 0; height: 55px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 12px; z-index: 100; }
         
-        /* 🚀 极致贴底 Footer：0 间隙 */
+        /* 🚀 底部布局回归：位置正确，紧凑美观 */
         .footer { 
-            position: fixed; bottom: 0; left: 0; right: 0; height: 50px; 
+            position: fixed; bottom: 0; left: 0; right: 0; height: 85px; 
             background: var(--bg); border-top: 1px solid var(--border); 
-            display: flex; justify-content: center; align-items: flex-end; 
-            z-index: 100; padding: 0; margin: 0;
+            display: flex; justify-content: center; align-items: center; 
+            z-index: 100; flex-direction: column; padding-bottom: 5px; 
         }
         
-        #toc-select { width: 100%; height: 36px; font-size: 15px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); padding-left: 8px; -webkit-appearance: none; }
+        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); padding-left: 10px; -webkit-appearance: none; }
         
-        article#viewer { padding: 0 20px; min-height: 80vh; display: block; overflow-x: hidden; text-align: left; /* 🚀 正文保持左对齐 */ }
+        article#viewer { padding: 0 20px; min-height: 80vh; display: block; overflow-x: hidden; }
         
-        /* 🖋️ 章节字号：28px/24px/20px，居中并强制着色 */
+        /* 🖋️ 标题层级对齐 */
         .apple-heading { 
-            color: var(--accent) !important; text-align: center !important; font-weight: bold; 
-            margin: 1.2em 0 0.8em 0; line-height: 1.3; display: block; text-indent: 0 !important;
+            color: var(--accent) !important; text-align: center; font-weight: bold; 
+            margin: 1.4em 0 1em 0; line-height: 1.3; display: block; text-indent: 0 !important;
         }
-        .chapter-title { font-size: 28px; } 
-        .section-title { font-size: 24px; }
+        .chapter-title { font-size: 30px; } 
+        .section-title { font-size: 26px; }
         .part-title { font-size: 22px; opacity: 0.9; }
 
+        /* 🖋️ 正文锁定 22px */
         .body-para { 
-            font-size: 20px; line-height: 1.7; text-align: justify; 
-            text-indent: 2em !important; margin-bottom: 1.1em; font-weight: normal; color: var(--text);
+            font-size: 22px; line-height: 1.8; text-align: justify; 
+            text-indent: 2em !important; margin-bottom: 1.2em; font-weight: normal; color: var(--text);
         }
 
-        .chapter-divider { border: 0; height: 1px; background: var(--border); margin: 30px 0; }
+        .chapter-divider { border: 0; height: 1px; background: var(--border); margin: 40px 0; }
 
-        /* 🚀 按钮极致贴底按钮 */
-        .control-group { display: flex; width: 100%; justify-content: space-between; align-items: flex-end; }
+        /* 🚀 还原原始圆角阴影按钮样式 */
+        .control-group { display: flex; width: 92%; justify-content: space-between; align-items: center; }
         .nav-btn { 
-            width: 50%; height: 50px; border: none; border-radius: 0; /* 🚀 矩形贴合 */
-            font-size: 16px; font-weight: bold; color: white; cursor: pointer; 
+            width: 48%; height: 50px; border: none; border-radius: 12px; 
+            font-size: 17px; font-weight: bold; color: white; cursor: pointer; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
         }
         #prev-btn { background-color: #bdc3c7; color: #555; } 
         #next-btn { background-color: #3498db; }
         
-        .upload-container { padding: 40px 20px; text-align: center; margin-top: 40px; }
-        .upload-container h2 { font-size: 26px; font-weight: 900; color: var(--text); margin-bottom: 30px; }
+        .upload-container { padding: 100px 20px; text-align: center; }
+        .upload-container h2 { font-size: 26px; font-weight: 900; margin-bottom: 30px; }
         #resume-btn { display: none; width: 85%; padding: 15px; margin: 0 auto 30px auto; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; }
-        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 200; text-align: center; }
+        
+        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); color: white; padding: 25px; border-radius: 12px; display: none; z-index: 200; text-align: center; font-weight: bold; }
         
         @keyframes flash { 0% { background-color: rgba(87, 172, 255, 0.2); } 100% { background-color: transparent; } }
-        .highlight-target { animation: flash 2s ease-out; }
+        .highlight-target { animation: flash 2s ease-out; border-radius: 4px; }
     </style>
 </head>
 <body>
-    <header class="header"><select id="toc-select" disabled><option>📖 加载目录...</option></select></header>
+    <header class="header"><select id="toc-select" disabled><option>📖 跳转目录...</option></select></header>
 
     <div class="upload-container" id="upload-area">
         <h2>EPUB 纯净版阅读器</h2>
         <button id="resume-btn">🔄 继续阅读</button>
         <div style="margin-top: 20px;">
-            <label for="file-input" style="color: #3498db; cursor: pointer; font-weight: bold; font-size: 18px;">📂 导入书籍</label>
+            <label for="file-input" style="color: #3498db; cursor: pointer; font-weight: bold; font-size: 20px;">📂 导入书籍</label>
             <input type="file" id="file-input" style="display: none;">
         </div>
     </div>
@@ -85,12 +87,13 @@
     <article id="viewer"></article>
 
     <footer class="footer">
+        <div id="page-info" style="font-size:10px; color:#999; margin-bottom:5px;"></div>
         <div class="control-group">
             <button id="prev-btn" class="nav-btn" disabled>上一组</button>
             <button id="next-btn" class="nav-btn" disabled>下一组</button>
         </div>
     </footer>
-    <div id="loading">正在极致对齐...</div>
+    <div id="loading">正在同步 iPhone 级跳转...</div>
 
     <script>
         var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 10;
@@ -149,6 +152,7 @@
             currentStartIndex = startIndex;
             document.getElementById('loading').style.display = 'block';
             var endIndex = Math.min(startIndex + BATCH_SIZE, spine.length);
+            document.getElementById('page-info').innerText = `章节 ${startIndex + 1} - ${endIndex}`;
             
             for (let i = startIndex; i < endIndex; i++) {
                 try {
@@ -168,7 +172,7 @@
                     cleanParas.forEach(function(pText, idx) {
                         var isPart = pText.includes("篇") && pText.length < 15;
                         var isChapter = pText.includes("章") && pText.length < 25;
-                        var isSection = (pText.includes("节") || pText.length < 15) && pText.length < 35;
+                        var isSection = (pText.includes("节") || pText.length < 18) && pText.length < 35;
 
                         if (isPart || isChapter || isSection) {
                             if (pText === lastTitleText) return; 
@@ -198,30 +202,43 @@
             }
             document.getElementById('loading').style.display = 'none';
 
+            // 🚀 核心：双重路径跳转定位
             setTimeout(() => {
                 let target = null;
                 if (targetLabel) {
                     const allLabels = document.querySelectorAll('[data-label]');
                     for (let el of allLabels) {
-                        if (el.getAttribute('data-label').includes(targetLabel)) { target = el; break; }
+                        if (el.getAttribute('data-label').includes(targetLabel) || targetLabel.includes(el.getAttribute('data-label'))) {
+                            target = el; break;
+                        }
                     }
                 }
                 if (!target && targetScrollIndex !== null) target = document.querySelector(`[data-idx='${targetScrollIndex}']`);
 
                 if (target) {
                     target.scrollIntoView({ behavior: 'auto', block: 'start' }); 
-                    window.scrollBy(0, -55); 
+                    window.scrollBy(0, -65); 
                     target.classList.add('highlight-target');
-                } else { window.scrollTo(0, 0); }
-            }, 200);
+                } else if (!targetScrollIndex) {
+                    window.scrollTo(0, 0);
+                }
+            }, 250);
         }
 
+        /* 🚀 物理路径解析跳转 */
         function loadChapterByMatch(href, label) {
+            // 路径规范化处理
             const baseHref = href.split('#')[0];
             let targetIndex = -1; 
+            
+            // 暴力搜索 spine 路径，解决相对路径不匹配问题
             for (let i = 0; i < spine.length; i++) {
-                if (spine[i].href.includes(baseHref)) { targetIndex = i; break; }
+                if (spine[i].href.includes(baseHref) || baseHref.includes(spine[i].href)) {
+                    targetIndex = i;
+                    break;
+                }
             }
+            
             if (targetIndex !== -1) { 
                 localStorage.setItem('exactIdx', targetIndex);
                 renderBatch(Math.floor(targetIndex / BATCH_SIZE) * BATCH_SIZE, targetIndex, label);
