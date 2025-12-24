@@ -8,7 +8,6 @@
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        /* 🎨 视觉校准：16:15 方案 */
         :root {
             --bg: #FAF6EF; --text: #333; --border: #e2e2e2; --accent: #57ACFF; 
         }
@@ -19,41 +18,50 @@
         body { 
             font-family: "PingFang SC", "STHeiti", -apple-system, sans-serif; 
             margin: 0; padding: 0; background-color: var(--bg); color: var(--text); 
-            padding-bottom: 85px; padding-top: 60px; transition: background-color 0.5s ease;
+            padding-bottom: 85px; padding-top: 55px; transition: background-color 0.5s ease;
         }
 
-        .header { position: fixed; top: 0; left: 0; right: 0; height: 55px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 12px; z-index: 100; }
+        .header { position: fixed; top: 0; left: 0; right: 0; height: 50px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 12px; z-index: 100; }
         
-        /* 🚀 极致压缩 Footer */
+        /* 🚀 底部极致布局：离地 10px */
         .footer { 
             position: fixed; bottom: 0; left: 0; right: 0; height: 80px; 
             background: var(--bg); border-top: 1px solid var(--border); 
             display: flex; justify-content: center; align-items: center; 
-            z-index: 100; flex-direction: column; padding-bottom: 5px; 
+            z-index: 100; flex-direction: column; padding-bottom: 10px; 
         }
         
-        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); padding-left: 10px; -webkit-appearance: none; }
+        #toc-select { width: 100%; height: 38px; font-size: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); padding-left: 10px; -webkit-appearance: none; }
         
         article#viewer { padding: 0 20px; min-height: 80vh; display: block; overflow-x: hidden; }
-        
-        /* 🖋️ 标题层级对齐 */
-        .apple-heading { 
-            color: var(--accent) !important; text-align: center; font-weight: bold; 
-            margin: 1.4em 0 1em 0; line-height: 1.3; display: block; text-indent: 0 !important;
-        }
-        .chapter-title { font-size: 30px; } 
-        .section-title { font-size: 26px; }
-        .part-title { font-size: 22px; opacity: 0.9; }
 
-        /* 🖋️ 正文锁定 22px */
-        .body-para { 
-            font-size: 22px; line-height: 1.8; text-align: justify; 
-            text-indent: 2em !important; margin-bottom: 1.2em; font-weight: normal; color: var(--text);
+        /* 🖋️ 标题排版校准 */
+        .apple-heading, h1, h2, h3 { 
+            color: var(--accent) !important; text-align: center !important; font-weight: bold !important; 
+            margin: 1.4em 0 1em 0 !important; line-height: 1.3 !important; display: block !important;
+            text-indent: 0 !important; border: none !important;
+        }
+        .chapter-title, h1 { font-size: 30px !important; } 
+        .section-title, h2 { font-size: 26px !important; }
+        .part-title, h3 { font-size: 22px !important; opacity: 0.9 !important; }
+
+        /* 🖋️ 正文锁定 22px 与首行缩进 */
+        .body-para, p { 
+            font-size: 22px !important; line-height: 1.8 !important; text-align: justify !important; 
+            text-indent: 2em !important; margin-bottom: 1.2em !important; 
+            font-weight: normal !important; color: var(--text) !important; display: block !important;
+        }
+
+        /* 🚀 图片高保真渲染 */
+        img { 
+            max-width: 100% !important; height: auto !important; 
+            display: block !important; margin: 20px auto !important; 
+            text-indent: 0 !important; border-radius: 8px !important;
         }
 
         .chapter-divider { border: 0; height: 1px; background: var(--border); margin: 40px 0; }
 
-        /* 🚀 原始圆角阴影按钮回归 */
+        /* 🚀 原始按钮样式回归 */
         .control-group { display: flex; width: 92%; justify-content: space-between; align-items: center; }
         .nav-btn { 
             width: 48%; height: 48px; border: none; border-radius: 12px; 
@@ -63,13 +71,12 @@
         #prev-btn { background-color: #bdc3c7; color: #555; } 
         #next-btn { background-color: #3498db; }
         
-        .upload-container { padding: 100px 20px; text-align: center; }
-        #resume-btn { display: none; width: 85%; padding: 15px; margin: 0 auto 30px auto; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; }
-        
-        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); color: white; padding: 25px; border-radius: 12px; display: none; z-index: 200; text-align: center; }
+        .upload-container { padding: 80px 20px; text-align: center; }
+        #resume-btn { display: none; width: 85%; padding: 15px; margin-bottom: 30px; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; }
+        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); color: white; padding: 25px; border-radius: 12px; display: none; z-index: 200; text-align: center; font-weight: bold; }
         
         @keyframes flash { 0% { background-color: rgba(87, 172, 255, 0.2); } 100% { background-color: transparent; } }
-        .highlight-target { animation: flash 2s ease-out; border-radius: 4px; }
+        .highlight-target { animation: flash 2s ease-out; }
     </style>
 </head>
 <body>
@@ -87,18 +94,16 @@
     <article id="viewer"></article>
 
     <footer class="footer">
-        <div id="page-info" style="font-size:10px; color:#999; margin-bottom:5px;"></div>
+        <div id="page-info" style="font-size:10px; color:#999; margin-bottom:4px;"></div>
         <div class="control-group">
             <button id="prev-btn" class="nav-btn" disabled>上一组</button>
             <button id="next-btn" class="nav-btn" disabled>下一组</button>
         </div>
     </footer>
-    <div id="loading">正在高保真还原跳转...</div>
+    <div id="loading">正在高保真解析图片与跳转...</div>
 
     <script>
         var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 10;
-        var JUNK_REGEX = /^(cover|unknown|未知|封面|copyright|author|\d+$)/i;
-
         localforage.config({ name: 'listenflow_db' });
 
         window.onload = function() { checkSavedBook(); };
@@ -128,16 +133,12 @@
                             items.forEach(function(item) {
                                 var option = document.createElement('option');
                                 option.text = item.label.trim(); 
-                                // 🚀 存储完整 href 和 label 用于多重匹配
-                                option.value = item.href + "|||" + item.label.trim();
+                                option.value = item.href; // 🚀 使用完整 Href 用于底层跳转
                                 select.add(option); if (item.subitems) flatten(item.subitems);
                             });
                         };
                         flatten(toc.toc); select.disabled = false;
-                        select.onchange = function() { if(this.value !== "-1") {
-                            const [href, label] = this.value.split('|||');
-                            loadChapterByMatch(href, label); 
-                        }};
+                        select.onchange = function() { if(this.value !== "-1") loadChapterByMatch(this.value); };
                     });
                     document.getElementById('upload-area').style.display = 'none';
                     document.getElementById('prev-btn').disabled = document.getElementById('next-btn').disabled = false;
@@ -148,7 +149,7 @@
             }; reader.readAsArrayBuffer(data);
         }
 
-        async function renderBatch(startIndex, targetScrollIndex = null, targetLabel = null) {
+        async function renderBatch(startIndex, targetScrollIndex = null) {
             var viewer = document.getElementById('viewer'); viewer.innerHTML = '';
             currentStartIndex = startIndex;
             document.getElementById('loading').style.display = 'block';
@@ -159,95 +160,59 @@
                 try {
                     let section = spine.get(i);
                     let doc = await section.load(book.load.bind(book));
-                    let bodyNode = doc.body || doc.documentElement || doc;
-                    let text = bodyNode.innerText || bodyNode.textContent || "";
-                    let paragraphs = text.split(/\n+/);
                     
-                    let chapterSection = document.createElement('section'); 
-                    if (i > startIndex) { let hr = document.createElement('hr'); hr.className = 'chapter-divider'; chapterSection.appendChild(hr); }
-                    
-                    let lastTitleText = ""; 
-                    let cleanParas = paragraphs.map(p => p.replace(/[\u00a0\u200b\u3000]/g, ' ').trim())
-                                               .filter(p => p.length > 0 && !JUNK_REGEX.test(p));
+                    let chapterWrapper = document.createElement('div');
+                    chapterWrapper.className = 'chapter-wrapper';
+                    chapterWrapper.id = 'sec-' + i;
 
-                    cleanParas.forEach(function(pText, idx) {
-                        var isPart = pText.includes("篇") && pText.length < 15;
-                        var isChapter = pText.includes("章") && pText.length < 25;
-                        var isSection = (pText.includes("节") || pText.length < 18) && pText.length < 35;
-
-                        if (isPart || isChapter || isSection) {
-                            if (pText === lastTitleText) return; 
-                            lastTitleText = pText;
-                            let el = document.createElement('div');
-                            el.className = 'apple-heading';
-                            if (isPart) el.classList.add('part-title');
-                            if (isChapter) el.classList.add('chapter-title');
-                            if (isSection) el.classList.add('section-title');
-                            el.innerText = pText;
-                            el.setAttribute('data-label', pText);
-                            el.setAttribute('data-idx', i);
-                            chapterSection.appendChild(el);
-                        } else {
-                            if (lastTitleText && pText.startsWith(lastTitleText.substring(0, 5))) {
-                                if (pText.length < lastTitleText.length + 5) return;
-                            }
-                            let el = document.createElement('p');
-                            el.className = 'body-para';
-                            el.innerText = pText;
-                            if (idx === 0) el.setAttribute('data-idx', i);
-                            chapterSection.appendChild(el);
+                    // 🚀 核心：修复图片路径
+                    let images = doc.querySelectorAll('img');
+                    for (let img of images) {
+                        let src = img.getAttribute('src');
+                        if (src && !src.startsWith('blob:') && !src.startsWith('http')) {
+                            let absolutePath = section.url(src);
+                            if (absolutePath.startsWith('/')) absolutePath = absolutePath.substring(1);
+                            try {
+                                let blobUrl = await book.archive.createUrl(absolutePath);
+                                if (blobUrl) img.setAttribute('src', blobUrl);
+                            } catch(e) {}
                         }
-                    });
-                    if (chapterSection.hasChildNodes()) viewer.appendChild(chapterSection);
+                    }
+
+                    // 🚀 核心：物理还原 HTML 以支持图片，同时应用样式
+                    chapterWrapper.innerHTML = (doc.body ? doc.body.innerHTML : (doc.documentElement.innerHTML || ""));
+                    
+                    if (i > startIndex) { 
+                        let hr = document.createElement('hr'); hr.className = 'chapter-divider'; 
+                        chapterWrapper.prepend(hr); 
+                    }
+                    viewer.appendChild(chapterWrapper);
                 } catch (e) { console.error(e); }
             }
             document.getElementById('loading').style.display = 'none';
 
-            // 🚀 核心：多重定位策略
-            setTimeout(() => {
-                let target = null;
-                if (targetLabel) {
-                    // 1. 尝试文字精准/模糊匹配
-                    const allLabels = document.querySelectorAll('[data-label]');
-                    for (let el of allLabels) {
-                        const content = el.getAttribute('data-label');
-                        if (content === targetLabel || content.includes(targetLabel) || targetLabel.includes(content)) {
-                            target = el; break;
-                        }
+            // 🚀 精准跳转执行
+            if (targetScrollIndex !== null) {
+                setTimeout(() => {
+                    let target = document.getElementById('sec-' + targetScrollIndex);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'auto', block: 'start' }); 
+                        window.scrollBy(0, -55); 
+                        target.classList.add('highlight-target');
                     }
-                }
-                // 2. 兜底匹配章节索引
-                if (!target && targetScrollIndex !== null) {
-                    target = document.querySelector(`[data-idx='${targetScrollIndex}']`);
-                }
-
-                if (target) {
-                    target.scrollIntoView({ behavior: 'auto', block: 'start' }); 
-                    window.scrollBy(0, -65); 
-                    target.classList.add('highlight-target');
-                } else if (!targetScrollIndex) {
-                    window.scrollTo(0, 0);
-                }
-            }, 300); // 增加延迟确保 DOM 渲染完成
+                }, 350);
+            } else { window.scrollTo(0, 0); }
         }
 
-        /* 🚀 全局路径解析与章节匹配 */
-        function loadChapterByMatch(href, label) {
-            // 清理 href 路径，移除锚点并规范化相对路径
-            const cleanHref = href.split('#')[0].split('/').pop(); 
-            let targetIndex = -1; 
+        /* 🚀 底层跳转匹配 */
+        function loadChapterByMatch(href) {
+            var targetIndex = -1; 
+            var spineItem = book.spine.get(href); // 🚀 直接使用底层 CFI 匹配，确保跳转不失效
             
-            // 暴力搜索 spine 路径：匹配文件名即可，绕过层级差异
-            for (let i = 0; i < spine.length; i++) {
-                if (spine[i].href.includes(cleanHref)) {
-                    targetIndex = i;
-                    break;
-                }
-            }
-            
-            if (targetIndex !== -1) { 
+            if (spineItem) { 
+                targetIndex = spineItem.index; 
                 localStorage.setItem('exactIdx', targetIndex);
-                renderBatch(Math.floor(targetIndex / BATCH_SIZE) * BATCH_SIZE, targetIndex, label);
+                renderBatch(Math.floor(targetIndex / BATCH_SIZE) * BATCH_SIZE, targetIndex);
             }
         }
 
