@@ -8,42 +8,43 @@
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        /* 🎨 16:52 视觉标准对齐 */
+        /* 🎨 极致压缩视觉系统 */
         :root { --bg: #FAF6EF; --text: #333; --border: #e2e2e2; --accent: #57ACFF; }
         @media (prefers-color-scheme: dark) { :root { --bg: #1A1A1A; --text: #F0F0F0; --border: #333333; --accent: #80CFFF; } }
 
-        body { font-family: "PingFang SC", "STHeiti", -apple-system, sans-serif; margin: 0; padding: 0; background-color: var(--bg); color: var(--text); padding-bottom: 50px; padding-top: 55px; }
+        body { font-family: "PingFang SC", "STHeiti", -apple-system, sans-serif; margin: 0; padding: 0; background-color: var(--bg); color: var(--text); overflow-x: hidden; }
+
+        /* 🚀 首页极致居中逻辑 */
+        .upload-container { 
+            position: fixed; inset: 0; display: flex; flex-direction: column; 
+            justify-content: center; align-items: center; text-align: center; z-index: 1000;
+            background-color: var(--bg);
+        }
+        .upload-container h2 { font-size: 26px; font-weight: 900; margin-bottom: 40px; }
+        #resume-btn { display: none; width: 80%; max-width: 320px; padding: 15px; margin-bottom: 25px; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; }
 
         .header { position: fixed; top: 0; left: 0; right: 0; height: 50px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 12px; z-index: 100; }
         
-        /* 🚀 底部极致对齐：0 间隙直角按钮 */
+        /* 🚀 底部极致贴底：0 缝隙 */
         .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 50px; background: var(--bg); border-top: 1px solid var(--border); display: flex; justify-content: center; align-items: flex-end; z-index: 100; }
+        .nav-btn { width: 50%; height: 50px; border: none; font-size: 16px; font-weight: bold; color: white; cursor: pointer; border-radius: 0 !important; }
+        #prev-btn { background-color: #bdc3c7; color: #555; } #next-btn { background-color: #3498db; }
         
         #toc-select { width: 100%; height: 36px; font-size: 15px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); padding-left: 8px; -webkit-appearance: none; }
         
-        article#viewer { padding: 0 20px; min-height: 80vh; display: block; overflow-x: hidden; text-align: left; }
+        article#viewer { padding: 60px 20px 70px 20px; min-height: 80vh; display: block; }
         
-        /* 🖋️ 标题层级与色彩 */
+        /* 🖋️ 标题层级指令：28px/24px */
         .apple-heading, h1, h2, h3 { color: var(--accent) !important; text-align: center !important; font-weight: bold !important; margin: 1.2em 0 0.8em 0 !important; line-height: 1.3 !important; display: block !important; text-indent: 0 !important; }
         .chapter-title, h1 { font-size: 28px !important; } 
         .section-title, h2 { font-size: 24px !important; }
 
         /* 🖋️ 正文锁定 22px 与首行缩进 */
         .body-para, p, div { font-size: 22px !important; line-height: 1.8 !important; text-align: justify !important; text-indent: 2em !important; margin-bottom: 1.2em !important; color: var(--text) !important; }
-
+        
         img { max-width: 100% !important; height: auto !important; display: block !important; margin: 20px auto !important; text-indent: 0 !important; border-radius: 8px !important; }
-
-        /* 🚀 首页极致居中对齐 */
-        .upload-container { position: fixed; inset: 0; top: 50px; bottom: 50px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-        .upload-container h2 { font-size: 26px; font-weight: 900; margin-bottom: 40px; }
-        #resume-btn { display: none; width: 85%; max-width: 320px; padding: 15px; margin-bottom: 25px; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; }
-        
-        /* 🚀 按钮极致贴底 */
-        .nav-btn { width: 50%; height: 50px; border: none; font-size: 16px; font-weight: bold; color: white; cursor: pointer; }
-        #prev-btn { background-color: #bdc3c7; color: #555; } #next-btn { background-color: #3498db; }
-        
-        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); color: white; padding: 25px; border-radius: 12px; display: none; z-index: 200; }
         .chapter-divider { border: 0; height: 1px; background: var(--border); margin: 30px 0; }
+        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); color: white; padding: 25px; border-radius: 12px; display: none; z-index: 2000; }
     </style>
 </head>
 <body>
@@ -58,7 +59,7 @@
     <article id="viewer"></article>
 
     <footer class="footer"><button id="prev-btn" class="nav-btn" disabled>上一组</button><button id="next-btn" class="nav-btn" disabled>下一组</button></footer>
-    <div id="loading">正在强力解析文字...</div>
+    <div id="loading">正在加载内容...</div>
 
     <script>
         var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 10;
@@ -111,15 +112,12 @@
             for (let i = startIndex; i < endIndex; i++) {
                 try {
                     let section = spine.get(i);
-                    // 🚀 核心：强力抓取原始源码，绕开渲染死锁
-                    let htmlSource = await book.load(section.href);
-                    let parser = new DOMParser();
-                    let doc = parser.parseFromString(htmlSource, 'text/html');
-                    
+                    // 🚀 核心：使用最稳健的 section.load()
+                    let doc = await section.load(book.load.bind(book));
                     let chapterWrapper = document.createElement('div');
                     chapterWrapper.id = 'sec-' + i;
                     
-                    // 清理书本干扰样式
+                    // 清理干扰并提取 HTML
                     doc.querySelectorAll('style, link, script').forEach(el => el.remove());
                     let content = doc.body ? doc.body.innerHTML : doc.documentElement.innerHTML;
                     
@@ -127,7 +125,7 @@
                     chapterWrapper.innerHTML += content;
                     viewer.appendChild(chapterWrapper);
 
-                    // 🚀 异步还原图片路径
+                    // 异步还原图片
                     setTimeout(async () => {
                         chapterWrapper.querySelectorAll('img').forEach(async img => {
                             let src = img.getAttribute('src');
@@ -141,7 +139,7 @@
                             }
                         });
                     }, 0);
-                } catch (e) { console.error("章节解析失败:", i, e); }
+                } catch (e) { console.error(e); }
             }
             document.getElementById('loading').style.display = 'none';
             if (targetScrollIndex !== null) {
