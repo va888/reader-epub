@@ -8,10 +8,9 @@
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        /* 🎨 14:53 视觉方案：更浅更清爽的蓝 */
         :root {
             --bg: #FAF6EF; --text: #333; --border: #e2e2e2; 
-            --accent: #57ACFF; /* 轻盈蓝 */
+            --accent: #57ACFF; /* 🚀 浅蓝色 */
         }
         @media (prefers-color-scheme: dark) {
             :root { 
@@ -23,40 +22,40 @@
         body { 
             font-family: "PingFang SC", "STHeiti", -apple-system, sans-serif; 
             margin: 0; padding: 0; background-color: var(--bg); color: var(--text); 
-            padding-bottom: 120px; padding-top: 60px; transition: background-color 0.5s ease;
+            padding-bottom: 95px; padding-top: 60px; transition: background-color 0.5s ease;
         }
 
         .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; z-index: 100; }
-        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 110px; background: var(--bg); border-top: 1px solid var(--border); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
+        
+        /* 🚀 离底部更近、更小的 Footer */
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 85px; background: var(--bg); border-top: 1px solid var(--border); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
         
         #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); padding-left: 10px; -webkit-appearance: none; }
         
         article#viewer { padding: 0 20px; min-height: 80vh; display: block; overflow-x: hidden; }
         
-        /* 🖋️ iPhone 级标题排版校准 */
+        /* 🖋️ 标题排版 */
         .apple-heading { 
             color: var(--accent) !important; text-align: center; font-weight: bold; 
-            margin: 1.6em 0 1.2em 0; line-height: 1.4; display: block; text-indent: 0 !important;
+            margin: 1.5em 0 1em 0; line-height: 1.4; display: block; text-indent: 0 !important;
         }
-        .chapter-title { font-size: 32px; } /* 大章 */
-        .section-title { font-size: 28px; } /* 小节 */
+        .chapter-title { font-size: 32px; } /* 大章 32px */
+        .section-title { font-size: 28px; } /* 小节 28px */
         .part-title { font-size: 24px; opacity: 0.9; }
 
         .body-para { 
-            font-size: 22px; /* 正文 */
-            line-height: 1.8; text-align: justify; 
-            text-indent: 2em !important; /* 物理缩进 */
-            margin-bottom: 1.2em; font-weight: normal;
+            font-size: 22px; line-height: 1.8; text-align: justify; 
+            text-indent: 2em !important; margin-bottom: 1.2em; font-weight: normal;
         }
 
-        .chapter-divider { border: 0; height: 1px; background: var(--border); margin: 60px 0; }
+        .chapter-divider { border: 0; height: 1px; background: var(--border); margin: 50px 0; }
 
-        /* 🚀 还原原始按钮样式：带阴影与圆角 */
-        .control-group { display: flex; width: 90%; justify-content: space-between; align-items: center; }
+        /* 🚀 缩小按钮尺寸 */
+        .control-group { display: flex; width: 92%; justify-content: space-between; align-items: center; }
         .nav-btn { 
-            width: 48%; height: 55px; border: none; border-radius: 12px; 
-            font-size: 18px; font-weight: bold; color: white; cursor: pointer; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            width: 48%; height: 45px; border: none; border-radius: 10px; 
+            font-size: 16px; font-weight: bold; color: white; cursor: pointer; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
         }
         #prev-btn { background-color: #bdc3c7; color: #555; } 
         #next-btn { background-color: #3498db; }
@@ -90,13 +89,13 @@
     <article id="viewer"></article>
 
     <footer class="footer">
-        <div id="page-info" style="font-size:12px; color:#999; margin-bottom:8px;"></div>
+        <div id="page-info" style="font-size:10px; color:#999; margin-bottom:5px;"></div>
         <div class="control-group">
             <button id="prev-btn" class="nav-btn" disabled>上一组</button>
             <button id="next-btn" class="nav-btn" disabled>下一组</button>
         </div>
     </footer>
-    <div id="loading">正在同步精准排版...</div>
+    <div id="loading">正在全量同步跳转逻辑...</div>
 
     <script>
         var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 10;
@@ -130,7 +129,6 @@
                         var flatten = function(items) {
                             items.forEach(function(item) {
                                 var option = document.createElement('option');
-                                // 🚀 记录目录文字，用于后续精准锚点定位
                                 option.text = item.label.trim(); 
                                 option.value = item.href + "|" + item.label.trim();
                                 select.add(option); if (item.subitems) flatten(item.subitems);
@@ -176,7 +174,7 @@
                     cleanParas.forEach(function(pText, idx) {
                         var isPart = pText.includes("篇") && pText.length < 15;
                         var isChapter = pText.includes("章") && pText.length < 25;
-                        var isSection = (pText.includes("节") || pText.length < 15) && pText.length < 35;
+                        var isSection = (pText.includes("节") || pText.length < 20) && pText.length < 40;
 
                         if (isPart || isChapter || isSection) {
                             if (pText === lastTitleText) return; 
@@ -187,8 +185,6 @@
                             if (isChapter) el.classList.add('chapter-title');
                             if (isSection) el.classList.add('section-title');
                             el.innerText = pText;
-                            
-                            // 🚀 核心：给标题挂上文字标记，支持小节精准跳转
                             el.setAttribute('data-label', pText);
                             el.setAttribute('data-idx', i);
                             chapterSection.appendChild(el);
@@ -208,12 +204,17 @@
             }
             document.getElementById('loading').style.display = 'none';
 
-            // 🚀 精准跳转定位：优先匹配目录文字，次之匹配章节索引
+            // 🚀 跳转核心：执行滚动定位
             setTimeout(() => {
                 let target = null;
                 if (targetLabel) {
-                    // 尝试匹配目录中的精准文字
-                    target = document.querySelector(`[data-label*="${targetLabel}"]`) || document.querySelector(`[data-label="${targetLabel}"]`);
+                    // 模糊匹配标签文字
+                    const allLabels = document.querySelectorAll('[data-label]');
+                    for (let el of allLabels) {
+                        if (el.getAttribute('data-label').includes(targetLabel) || targetLabel.includes(el.getAttribute('data-label'))) {
+                            target = el; break;
+                        }
+                    }
                 }
                 if (!target && targetScrollIndex !== null) {
                     target = document.querySelector(`[data-idx='${targetScrollIndex}']`);
@@ -226,20 +227,25 @@
                 } else if (!targetScrollIndex) {
                     window.scrollTo(0, 0);
                 }
-            }, 200);
+            }, 250);
         }
 
-        /* 🚀 物理修复：解构 Href 并配合目录文字执行跳转 */
+        /* 🚀 全量路径匹配跳转方案 */
         function loadChapterByMatch(href, label) {
             const baseHref = href.split('#')[0];
-            var targetIndex = -1; 
-            var spineItem = book.spine.get(baseHref); 
+            let targetIndex = -1; 
             
-            if (spineItem) { 
-                targetIndex = spineItem.index; 
+            // 暴力遍历所有章节查找路径匹配
+            for (let i = 0; i < spine.length; i++) {
+                if (spine[i].href.includes(baseHref)) {
+                    targetIndex = i;
+                    break;
+                }
+            }
+            
+            if (targetIndex !== -1) { 
                 localStorage.setItem('exactIdx', targetIndex);
-                
-                // 加载批次并传递目录文字（Label）用于小节锚点匹配
+                // 强制重新渲染批次以确保定位成功
                 renderBatch(Math.floor(targetIndex / BATCH_SIZE) * BATCH_SIZE, targetIndex, label);
             }
         }
