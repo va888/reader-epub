@@ -8,12 +8,12 @@
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        /* 🎨 iPhone 1:1 视觉系统 */
+        /* 🎨 iPhone 图书视觉系统校准 */
         :root {
             --bg: #FAF6EF; 
             --text: #333; 
             --border: #e0e0e0; 
-            --accent: #007AFF; /* iPhone 标准蓝 */
+            --accent: #007AFF; /* iPhone 蓝色 */
         }
         @media (prefers-color-scheme: dark) {
             :root { 
@@ -30,27 +30,27 @@
             padding-bottom: 120px; padding-top: 60px; transition: background-color 0.5s ease;
         }
 
-        /* 首页组件样式 */
+        /* Header & Footer 纯净版 */
         .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; z-index: 100; }
         .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 110px; background: var(--bg); border-top: 1px solid var(--border); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
-        .ver-tag { position: absolute; top: 5px; left: 5px; font-size: 10px; color: purple; font-weight: bold; z-index: 101; background: rgba(243, 229, 245, 0.5); padding: 2px 4px; border-radius: 4px; opacity: 0.6; }
+        
         #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); padding-left: 10px; -webkit-appearance: none; }
         
         article#viewer { padding: 0 20px; min-height: 80vh; display: block; overflow-x: hidden; }
         
-        /* 🖋️ 标题排版：蓝色、居中、加粗 */
+        /* 🖋️ 标题排版：大章小节 1:1 还原 */
         .apple-heading { 
             color: var(--accent) !important; text-align: center; font-weight: bold; 
-            margin: 1.4em 0 1em 0; line-height: 1.4; display: block; text-indent: 0 !important;
+            margin: 1.5em 0 1em 0; line-height: 1.4; display: block; text-indent: 0 !important;
         }
-        .chapter-title { font-size: 26px; }
-        .section-title { font-size: 22px; }
-        .part-title { font-size: 20px; opacity: 0.8; }
+        .chapter-title { font-size: 28px; } /* 大章标题 */
+        .section-title { font-size: 24px; } /* 小节标题 */
+        .part-title { font-size: 22px; opacity: 0.8; }
 
-        /* 🖋️ 正文排版：24px 大号、首行缩进 */
+        /* 🖋️ 正文排版 */
         .body-para { 
             font-size: 24px; line-height: 1.8; text-align: justify; 
-            text-indent: 2em !important; /* 强制两字符缩进 */
+            text-indent: 2em !important; /* 强制首行缩进 */
             margin-bottom: 1.2em; font-weight: normal;
         }
 
@@ -63,13 +63,12 @@
         #resume-btn { display: none; width: 80%; padding: 15px; margin: 0 auto 20px auto; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; }
         #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 200; }
         
-        @keyframes flash { 0% { background-color: rgba(0, 122, 255, 0.2); } 100% { background-color: transparent; } }
+        @keyframes flash { 0% { background-color: rgba(0, 122, 255, 0.15); } 100% { background-color: transparent; } }
         .highlight-target { animation: flash 2s ease-out; }
     </style>
 </head>
 <body>
     <header class="header">
-        <div class="ver-tag">LISTENFLOW v2.9</div>
         <select id="toc-select" disabled><option>📖 加载目录中...</option></select>
     </header>
 
@@ -91,7 +90,7 @@
             <button id="next-btn" class="nav-btn" disabled>下一组</button>
         </div>
     </footer>
-    <div id="loading">正在高保真还原排版...</div>
+    <div id="loading">正在高保真解析...</div>
 
     <script>
         var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 10;
@@ -160,14 +159,14 @@
                     let chapterSection = document.createElement('section'); 
                     if (i > startIndex) { let hr = document.createElement('hr'); hr.className = 'chapter-divider'; chapterSection.appendChild(hr); }
                     
-                    let lastTitleText = ""; // 🚀 记录已确定的标题
+                    let lastTitleText = ""; // 🚀 记录本章节最后渲染的标题文字
                     let cleanParas = paragraphs.map(p => p.replace(/[\u00a0\u200b\u3000]/g, ' ').trim())
                                                .filter(p => p.length > 0 && !JUNK_REGEX.test(p));
 
                     cleanParas.forEach(function(pText, idx) {
                         var isPart = pText.includes("篇") && pText.length < 15;
-                        var isChapter = pText.includes("章") && pText.length < 15;
-                        var isSection = pText.includes("节") && pText.length < 25;
+                        var isChapter = pText.includes("章") && pText.length < 25;
+                        var isSection = pText.includes("节") && pText.length < 30;
 
                         if (isPart || isChapter || isSection) {
                             lastTitleText = pText;
@@ -177,10 +176,10 @@
                             if (isChapter) el.classList.add('chapter-title');
                             if (isSection) el.classList.add('section-title');
                             el.innerText = pText;
-                            if (idx < 3) el.setAttribute('data-target-idx', i);
+                            if (idx < 5) el.setAttribute('data-target-idx', i);
                             chapterSection.appendChild(el);
                         } else {
-                            // 🚀 核心去重逻辑：如果正文第一句重复了标题，则跳过
+                            // 🚀 核心去重逻辑：如果正文第一句重复了标题（回声），则跳过
                             if (lastTitleText && pText.startsWith(lastTitleText.substring(0, 5))) {
                                 if (pText.length < lastTitleText.length + 5) return;
                             }
@@ -188,6 +187,7 @@
                             let el = document.createElement('p');
                             el.className = 'body-para';
                             el.innerText = pText;
+                            // 兜底锚点
                             if (idx === 0 && !chapterSection.querySelector('[data-target-idx]')) el.setAttribute('data-target-idx', i);
                             chapterSection.appendChild(el);
                         }
