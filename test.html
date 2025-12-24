@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
+        /* 🎨 视觉校准：16:15 方案 */
         :root {
             --bg: #FAF6EF; --text: #333; --border: #e2e2e2; --accent: #57ACFF; 
         }
@@ -18,14 +19,14 @@
         body { 
             font-family: "PingFang SC", "STHeiti", -apple-system, sans-serif; 
             margin: 0; padding: 0; background-color: var(--bg); color: var(--text); 
-            padding-bottom: 90px; padding-top: 60px; transition: background-color 0.5s ease;
+            padding-bottom: 85px; padding-top: 60px; transition: background-color 0.5s ease;
         }
 
         .header { position: fixed; top: 0; left: 0; right: 0; height: 55px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 12px; z-index: 100; }
         
-        /* 🚀 底部布局回归：位置正确，紧凑美观 */
+        /* 🚀 极致压缩 Footer */
         .footer { 
-            position: fixed; bottom: 0; left: 0; right: 0; height: 85px; 
+            position: fixed; bottom: 0; left: 0; right: 0; height: 80px; 
             background: var(--bg); border-top: 1px solid var(--border); 
             display: flex; justify-content: center; align-items: center; 
             z-index: 100; flex-direction: column; padding-bottom: 5px; 
@@ -52,10 +53,10 @@
 
         .chapter-divider { border: 0; height: 1px; background: var(--border); margin: 40px 0; }
 
-        /* 🚀 还原原始圆角阴影按钮样式 */
+        /* 🚀 原始圆角阴影按钮回归 */
         .control-group { display: flex; width: 92%; justify-content: space-between; align-items: center; }
         .nav-btn { 
-            width: 48%; height: 50px; border: none; border-radius: 12px; 
+            width: 48%; height: 48px; border: none; border-radius: 12px; 
             font-size: 17px; font-weight: bold; color: white; cursor: pointer; 
             box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
         }
@@ -63,10 +64,9 @@
         #next-btn { background-color: #3498db; }
         
         .upload-container { padding: 100px 20px; text-align: center; }
-        .upload-container h2 { font-size: 26px; font-weight: 900; margin-bottom: 30px; }
         #resume-btn { display: none; width: 85%; padding: 15px; margin: 0 auto 30px auto; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; }
         
-        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); color: white; padding: 25px; border-radius: 12px; display: none; z-index: 200; text-align: center; font-weight: bold; }
+        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); color: white; padding: 25px; border-radius: 12px; display: none; z-index: 200; text-align: center; }
         
         @keyframes flash { 0% { background-color: rgba(87, 172, 255, 0.2); } 100% { background-color: transparent; } }
         .highlight-target { animation: flash 2s ease-out; border-radius: 4px; }
@@ -76,7 +76,7 @@
     <header class="header"><select id="toc-select" disabled><option>📖 跳转目录...</option></select></header>
 
     <div class="upload-container" id="upload-area">
-        <h2>EPUB 纯净版阅读器</h2>
+        <h2 style="font-weight: 900;">EPUB 纯净版阅读器</h2>
         <button id="resume-btn">🔄 继续阅读</button>
         <div style="margin-top: 20px;">
             <label for="file-input" style="color: #3498db; cursor: pointer; font-weight: bold; font-size: 20px;">📂 导入书籍</label>
@@ -93,7 +93,7 @@
             <button id="next-btn" class="nav-btn" disabled>下一组</button>
         </div>
     </footer>
-    <div id="loading">正在同步 iPhone 级跳转...</div>
+    <div id="loading">正在高保真还原跳转...</div>
 
     <script>
         var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 10;
@@ -128,13 +128,14 @@
                             items.forEach(function(item) {
                                 var option = document.createElement('option');
                                 option.text = item.label.trim(); 
-                                option.value = item.href + "|" + item.label.trim();
+                                // 🚀 存储完整 href 和 label 用于多重匹配
+                                option.value = item.href + "|||" + item.label.trim();
                                 select.add(option); if (item.subitems) flatten(item.subitems);
                             });
                         };
                         flatten(toc.toc); select.disabled = false;
                         select.onchange = function() { if(this.value !== "-1") {
-                            const [href, label] = this.value.split('|');
+                            const [href, label] = this.value.split('|||');
                             loadChapterByMatch(href, label); 
                         }};
                     });
@@ -202,18 +203,23 @@
             }
             document.getElementById('loading').style.display = 'none';
 
-            // 🚀 核心：双重路径跳转定位
+            // 🚀 核心：多重定位策略
             setTimeout(() => {
                 let target = null;
                 if (targetLabel) {
+                    // 1. 尝试文字精准/模糊匹配
                     const allLabels = document.querySelectorAll('[data-label]');
                     for (let el of allLabels) {
-                        if (el.getAttribute('data-label').includes(targetLabel) || targetLabel.includes(el.getAttribute('data-label'))) {
+                        const content = el.getAttribute('data-label');
+                        if (content === targetLabel || content.includes(targetLabel) || targetLabel.includes(content)) {
                             target = el; break;
                         }
                     }
                 }
-                if (!target && targetScrollIndex !== null) target = document.querySelector(`[data-idx='${targetScrollIndex}']`);
+                // 2. 兜底匹配章节索引
+                if (!target && targetScrollIndex !== null) {
+                    target = document.querySelector(`[data-idx='${targetScrollIndex}']`);
+                }
 
                 if (target) {
                     target.scrollIntoView({ behavior: 'auto', block: 'start' }); 
@@ -222,18 +228,18 @@
                 } else if (!targetScrollIndex) {
                     window.scrollTo(0, 0);
                 }
-            }, 250);
+            }, 300); // 增加延迟确保 DOM 渲染完成
         }
 
-        /* 🚀 物理路径解析跳转 */
+        /* 🚀 全局路径解析与章节匹配 */
         function loadChapterByMatch(href, label) {
-            // 路径规范化处理
-            const baseHref = href.split('#')[0];
+            // 清理 href 路径，移除锚点并规范化相对路径
+            const cleanHref = href.split('#')[0].split('/').pop(); 
             let targetIndex = -1; 
             
-            // 暴力搜索 spine 路径，解决相对路径不匹配问题
+            // 暴力搜索 spine 路径：匹配文件名即可，绕过层级差异
             for (let i = 0; i < spine.length; i++) {
-                if (spine[i].href.includes(baseHref) || baseHref.includes(spine[i].href)) {
+                if (spine[i].href.includes(cleanHref)) {
                     targetIndex = i;
                     break;
                 }
