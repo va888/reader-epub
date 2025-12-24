@@ -8,15 +8,15 @@
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        /* 🎨 14:53 视觉方案对齐 */
+        /* 🎨 视觉变量：iPhone 14:53 方案 */
         :root {
             --bg: #FAF6EF; --text: #333; --border: #e2e2e2; 
-            --accent: #57ACFF; /* 更浅的日间蓝 */
+            --accent: #57ACFF; /* 轻盈日间蓝 */
         }
         @media (prefers-color-scheme: dark) {
             :root { 
                 --bg: #1A1A1A; --text: #F0F0F0; --border: #333333; 
-                --accent: #80CFFF; /* 更浅的夜间蓝 */
+                --accent: #80CFFF; /* 轻盈夜间蓝 */
             }
         }
 
@@ -38,39 +38,50 @@
             color: var(--accent) !important; text-align: center; font-weight: bold; 
             margin: 1.6em 0 1.2em 0; line-height: 1.4; display: block; text-indent: 0 !important;
         }
-        .chapter-title { font-size: 32px; } /* 大章 */
-        .section-title { font-size: 28px; } /* 小节 */
+        .chapter-title { font-size: 32px; } /* 大章 32px */
+        .section-title { font-size: 28px; } /* 小节 28px */
         .part-title { font-size: 24px; opacity: 0.9; }
 
         /* 🖋️ 正文排版 */
         .body-para { 
             font-size: 22px; line-height: 1.8; text-align: justify; 
-            text-indent: 2em !important; /* 物理缩进 */
-            margin-bottom: 1.2em; font-weight: normal;
+            text-indent: 2em !important; margin-bottom: 1.2em; font-weight: normal;
         }
 
         .chapter-divider { border: 0; height: 1px; background: var(--border); margin: 60px 0; }
-        .nav-btn { width: 48%; height: 55px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; color: white; cursor: pointer; }
-        #prev-btn { background-color: #bdc3c7; color: #555; } #next-btn { background-color: #3498db; }
+
+        /* 🚀 还原原始按钮样式 */
+        .control-group { display: flex; width: 90%; justify-content: space-between; align-items: center; }
+        .nav-btn { 
+            width: 48%; height: 55px; border: none; border-radius: 12px; 
+            font-size: 18px; font-weight: bold; color: white; cursor: pointer; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+        }
+        #prev-btn { background-color: #bdc3c7; color: #555; } 
+        #next-btn { background-color: #3498db; }
         
         .upload-container { padding: 40px 20px; text-align: center; margin-top: 40px; }
-        #resume-btn { display: none; width: 80%; padding: 15px; margin: 0 auto 20px auto; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; }
+        #resume-btn { 
+            display: none; width: 80%; padding: 15px; margin: 0 auto 20px auto; 
+            background: #27ae60; color: white; border: none; border-radius: 50px; 
+            font-size: 18px; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
         #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 200; }
         
-        @keyframes flash { 0% { background-color: rgba(87, 172, 255, 0.15); } 100% { background-color: transparent; } }
-        .highlight-target { animation: flash 2s ease-out; }
+        @keyframes flash { 0% { background-color: rgba(87, 172, 255, 0.2); } 100% { background-color: transparent; } }
+        .highlight-target { animation: flash 2s ease-out; border-radius: 4px; }
     </style>
 </head>
 <body>
     <header class="header">
-        <select id="toc-select" disabled><option>📖 跳转目录...</option></select>
+        <select id="toc-select" disabled><option>📖 正在加载目录...</option></select>
     </header>
 
     <div class="upload-container" id="upload-area">
         <h2 style="font-weight: 900;">EPUB 纯净版阅读器</h2>
         <button id="resume-btn">🔄 继续阅读</button>
         <div style="margin-top: 20px;">
-            <label for="file-input" style="color: #3498db; cursor: pointer; font-weight: bold;">📂 导入 EPUB 书籍</label>
+            <label for="file-input" style="color: #3498db; cursor: pointer; font-weight: bold;">📂 导入书籍</label>
             <input type="file" id="file-input" style="display: none;">
         </div>
     </div>
@@ -84,7 +95,7 @@
             <button id="next-btn" class="nav-btn" disabled>下一组</button>
         </div>
     </footer>
-    <div id="loading">正在精准定位排版...</div>
+    <div id="loading">正在同步精准排版...</div>
 
     <script>
         var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 10;
@@ -150,6 +161,7 @@
                     let paragraphs = text.split(/\n+/);
                     
                     let chapterSection = document.createElement('section'); 
+                    chapterSection.id = 'sec-idx-' + i;
                     if (i > startIndex) { let hr = document.createElement('hr'); hr.className = 'chapter-divider'; chapterSection.appendChild(hr); }
                     
                     let lastTitleText = ""; 
@@ -170,18 +182,18 @@
                             if (isChapter) el.classList.add('chapter-title');
                             if (isSection) el.classList.add('section-title');
                             el.innerText = pText;
-                            if (idx < 5) el.setAttribute('data-target-idx', i);
+                            // 为跳转绑定锚点，兼容小节名跳转
+                            el.setAttribute('data-text', pText);
+                            el.setAttribute('data-idx', i);
                             chapterSection.appendChild(el);
                         } else {
-                            let displayP = pText;
-                            if (lastTitleText && displayP.startsWith(lastTitleText.substring(0, 5))) {
-                                if (displayP.length < lastTitleText.length + 5) return;
+                            if (lastTitleText && pText.startsWith(lastTitleText.substring(0, 5))) {
+                                if (pText.length < lastTitleText.length + 5) return;
                             }
-                            
                             let el = document.createElement('p');
                             el.className = 'body-para';
-                            el.innerText = displayP;
-                            if (idx === 0 && !chapterSection.querySelector('[data-target-idx]')) el.setAttribute('data-target-idx', i);
+                            el.innerText = pText;
+                            if (idx === 0) el.setAttribute('data-idx', i);
                             chapterSection.appendChild(el);
                         }
                     });
@@ -190,9 +202,11 @@
             }
             document.getElementById('loading').style.display = 'none';
 
+            // 🚀 目录跳转定位逻辑
             if (targetScrollIndex !== null) {
                 setTimeout(() => {
-                    var target = document.querySelector(`[data-target-idx='${targetScrollIndex}']`);
+                    // 优先匹配具体的 index 标记
+                    var target = document.querySelector(`[data-idx='${targetScrollIndex}']`);
                     if (target) {
                         target.scrollIntoView({ behavior: 'auto', block: 'start' }); 
                         window.scrollBy(0, -70); 
@@ -204,16 +218,30 @@
             }
         }
 
-        /* 🚀 核心修复：解构 href，剥离锚点后再匹配 spine */
+        /* 🚀 核心修复：支持锚点与小节精准跳转 */
         function loadChapterByMatch(href) {
-            // 分割锚点，只取基础文件路径
-            const baseHref = href.split('#')[0];
+            const parts = href.split('#');
+            const baseHref = parts[0];
+            const anchor = parts[1];
+            
             var targetIndex = -1; 
             var spineItem = book.spine.get(baseHref); 
             
             if (spineItem) { 
                 targetIndex = spineItem.index; 
                 localStorage.setItem('exactIdx', targetIndex);
+                
+                // 如果目标章节已在当前批次中，直接滚动
+                if (targetIndex >= currentStartIndex && targetIndex < currentStartIndex + BATCH_SIZE) {
+                    const target = document.querySelector(`[data-idx='${targetIndex}']`);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        window.scrollBy(0, -70);
+                        target.classList.add('highlight-target');
+                        return;
+                    }
+                }
+                // 否则，加载新批次
                 renderBatch(Math.floor(targetIndex / BATCH_SIZE) * BATCH_SIZE, targetIndex);
             }
         }
