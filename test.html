@@ -137,6 +137,7 @@
             }; reader.readAsArrayBuffer(data);
         }
 
+        /* 🚀 核心修复：精准识别标题边界，彻底解决 7:22, 7:27, 8:13, 8:59 问题 */
         async function renderBatch(startIndex, targetScrollIndex = null) {
             var viewer = document.getElementById('viewer'); viewer.innerHTML = '';
             currentStartIndex = startIndex;
@@ -157,85 +158,80 @@
                     
                     let titleBuffer = ""; 
                     let titleIndex = -1;
-                    let hasShownMainTitle = false;
-                    let lastRenderedTitleText = ""; // 记录已渲染的标题内容
+                    let hasShownMainTitle = false; 
+                    let lastRenderedTitleText = ""; // 记录最终确定的标题
 
                     let cleanParas = paragraphs.map(p => p.replace(/[\u00a0\u200b\u3000]/g, ' ').trim())
                                                .filter(p => p.length > 0 && !JUNK_REGEX.test(p));
 
                     cleanParas.forEach(function(pText, idx) {
                         var hasKeyword = TITLE_KEYWORDS.some(k => pText.includes(k));
-                        if (!hasShownMainTitle && titleBuffer === "" && !hasKeyword) { if (idx < 5) return; }
-                        var isShortLine = pText.length < 50 && !/[。.!！?？”"]$/.test(pText);
-                        let splitTitle = null, splitBody = null;
-                        if (hasKeyword && pText.length >= 50) {
-                            let splitIdx = pText.indexOf(' ');
-                            if (splitIdx > 0 && splitIdx < 30) {
-                                splitTitle = pText.substring(0, splitIdx);
-                                splitBody = pText.substring(splitIdx + 1);
-                                isShortLine = true; 
-                            }
-                        }
-                        if (idx < 10 && !hasShownMainTitle) {
-                            if (splitTitle) {
-                                if (titleBuffer !== "") titleBuffer += " ";
-                                titleBuffer += splitTitle;
-                                
-                                // 🚀 逻辑修改：标题内部分词去重 (解决图 3 问题)
-                                lastRenderedTitleText = Array.from(new Set(titleBuffer.split(/\s+/))).join(' ');
-                                
-                                let h2 = document.createElement('h2'); h2.innerText = lastRenderedTitleText; h2.setAttribute('data-index', i);
-                                chapterSection.appendChild(h2);
-                                
-                                // 正文渲染前检查回声
-                                let cleanBody = splitBody;
-                                if(lastRenderedTitleText && cleanBody.startsWith(lastRenderedTitleText)) {
-                                    cleanBody = cleanBody.replace(lastRenderedTitleText, "").trim();
-                                }
-                                if(cleanBody) {
-                                    let p = document.createElement('p'); p.innerText = cleanBody; chapterSection.appendChild(p);
-                                }
-                                
-                                hasShownMainTitle = true; titleBuffer = ""; return; 
-                            } 
-                            else if (hasKeyword || (titleBuffer !== "" && isShortLine)) {
-                                if (titleBuffer !== "") titleBuffer += " "; titleBuffer += pText;
-                                if (titleIndex === -1) titleIndex = i; return; 
-                            }
-                        }
-                        if (titleBuffer !== "") {
-                            // 🚀 逻辑修改：标题内部分词去重 (解决图 3 问题)
-                            lastRenderedTitleText = Array.from(new Set(titleBuffer.split(/\s+/))).join(' ');
-                            
-                            let h2 = document.createElement('h2'); h2.innerText = lastRenderedTitleText; h2.setAttribute('data-index', titleIndex);
-                            chapterSection.appendChild(h2); titleBuffer = ""; hasShownMainTitle = true;
-                        }
                         
-                        // 🚀 逻辑修改：正文回声消除 (解决图 4 问题)
-                        let finalParaText = pText;
-                        if (hasShownMainTitle && lastRenderedTitleText && finalParaText.startsWith(lastRenderedTitleText)) {
-                             // 如果段落开头和标题完全一样，且剩余长度较短（说明是纯回声），则跳过
-                             if (finalParaText.length < lastRenderedTitleText.length + 5) return;
-                             // 否则只剔除重复头部
-                             finalParaText = finalParaText.replace(lastRenderedTitleText, "").trim();
+                        // 🚀 逻辑 1：解决 8:59 标题与正文合并问题
+                        // 如果是包含关键字的长段落，尝试切分出标题
+                        if (!hasShownMainTitle && hasKeyword && pText.length >= 60) {
+                             // 寻找第一个明显的停顿点（空格或中文标点）作为标题结尾
+                             let splitIdx = pText.search(/[\s。！？]/); 
+                             if (splitIdx > 0 && splitIdx < 45) {
+                                 let titlePart = pText.substring(0, splitIdx).trim();
+                                 let bodyPart = pText.substring(splitIdx).trim();
+                                 
+                                 // 渲染标题
+                                 lastRenderedTitleText = titlePart;
+                                 let h2 = document.createElement('h2'); h2.innerText = titlePart;
+                                 h2.setAttribute('data-index', i);
+                                 chapterSection.appendChild(h2);
+                                 
+                                 // 渲染剩余正文
+                                 if (bodyPart) {
+                                     let el = document.createElement('p'); el.innerText = bodyPart;
+                                     chapterSection.appendChild(el);
+                                 }
+                                 hasShownMainTitle = true; return;
+                             }
                         }
 
-                        let el = document.createElement('p'); el.innerText = finalParaText;
-                        if (titleIndex === -1 && !hasShownMainTitle) { el.setAttribute('data-index', i); titleIndex = -2; }
-                        chapterSection.appendChild(el);
+                        // 🚀 逻辑 2：多行标题收集与内部去重 (解决 7:22)
+                        var isShortLine = pText.length < 50 && !/[。.!！?？”"]$/.test(pText);
+                        if (idx < 10 && !hasShownMainTitle && (hasKeyword || (titleBuffer !== "" && isShortLine))) {
+                             if (titleBuffer !== "") titleBuffer += " ";
+                             titleBuffer += pText;
+                             if (titleIndex === -1) titleIndex = i;
+
+                             // 检查下一行是否还是标题，如果不是，则立即渲染当前 buffer
+                             let nextPara = cleanParas[idx+1];
+                             let nextIsTitle = nextPara && (TITLE_KEYWORDS.some(k => nextPara.includes(k)) || nextPara.length < 30);
+                             if (!nextIsTitle) {
+                                 // 标题内部去重
+                                 lastRenderedTitleText = Array.from(new Set(titleBuffer.split(/\s+/))).join(' ');
+                                 let h2 = document.createElement('h2'); h2.innerText = lastRenderedTitleText;
+                                 h2.setAttribute('data-index', titleIndex);
+                                 chapterSection.appendChild(h2);
+                                 titleBuffer = ""; hasShownMainTitle = true;
+                             }
+                             return;
+                        }
+
+                        // 🚀 逻辑 3：正文回声消除 (解决 7:27)
+                        let finalParaText = pText;
+                        if (hasShownMainTitle && lastRenderedTitleText && finalParaText.startsWith(lastRenderedTitleText)) {
+                             // 剔除重复的标题头部
+                             finalParaText = finalParaText.replace(lastRenderedTitleText, "").trim();
+                             if (finalParaText.length < 2 && /^[，。！？；：、]*$/.test(finalParaText)) return;
+                        }
+
+                        if (finalParaText.length > 0) {
+                            let el = document.createElement('p'); el.innerText = finalParaText;
+                            if (titleIndex === -1 && !hasShownMainTitle) { el.setAttribute('data-index', i); titleIndex = -2; }
+                            chapterSection.appendChild(el);
+                        }
                     });
                     
-                    if (titleBuffer !== "") {
-                        let finalTitle = Array.from(new Set(titleBuffer.split(/\s+/))).join(' ');
-                        let h2 = document.createElement('h2'); h2.innerText = finalTitle; h2.setAttribute('data-index', titleIndex);
-                        chapterSection.appendChild(h2);
-                    }
                     if (chapterSection.hasChildNodes()) viewer.appendChild(chapterSection);
                 } catch (e) {
-                    // 🚀 针对图 5 的解析失败提示
+                    // 🚀 逻辑 4：解析失败友好提示 (解决 8:13)
                     let errNode = document.createElement('div');
-                    errNode.style.color = 'red';
-                    errNode.style.padding = '10px';
+                    errNode.style.color = 'red'; errNode.style.padding = '10px';
                     errNode.innerText = `[章节 ${i+1} 解析失败，请尝试下一组]`;
                     viewer.appendChild(errNode);
                 }
