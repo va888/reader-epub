@@ -8,10 +8,9 @@
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        /* 🎨 极致视觉系统 */
         :root {
             --bg: #FAF6EF; --text: #333; --border: #e2e2e2; 
-            --accent: #57ACFF; /* 🚀 轻盈蓝 */
+            --accent: #57ACFF; 
         }
         @media (prefers-color-scheme: dark) {
             :root { --bg: #1A1A1A; --text: #F0F0F0; --border: #333333; --accent: #80CFFF; }
@@ -20,38 +19,41 @@
         body { 
             font-family: "PingFang SC", "STHeiti", -apple-system, sans-serif; 
             margin: 0; padding: 0; background-color: var(--bg); color: var(--text); 
-            padding-bottom: 85px; padding-top: 55px; transition: background-color 0.5s ease;
+            padding-bottom: 70px; padding-top: 55px; transition: background-color 0.5s ease;
         }
 
-        /* 🚀 Header 压缩至 55px */
         .header { position: fixed; top: 0; left: 0; right: 0; height: 55px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 12px; z-index: 100; }
         
-        /* 🚀 Footer 极致压缩至 80px */
-        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 80px; background: var(--bg); border-top: 1px solid var(--border); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
+        /* 🚀 极致压缩 Footer：底部留 10px */
+        .footer { 
+            position: fixed; bottom: 0; left: 0; right: 0; height: 65px; 
+            background: var(--bg); border-top: 1px solid var(--border); 
+            display: flex; justify-content: center; align-items: center; 
+            z-index: 100; flex-direction: column; padding-bottom: 10px; 
+        }
         
         #toc-select { width: 100%; height: 38px; font-size: 15px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); padding-left: 8px; -webkit-appearance: none; }
         
         article#viewer { padding: 0 20px; min-height: 80vh; display: block; overflow-x: hidden; }
         
-        /* 🖋️ 标题与正文层级 */
+        /* 🖋️ 章节字号：28px/24px/20px */
         .apple-heading { 
             color: var(--accent) !important; text-align: center; font-weight: bold; 
-            margin: 1.4em 0 1em 0; line-height: 1.3; display: block; text-indent: 0 !important;
+            margin: 1.2em 0 0.8em 0; line-height: 1.3; display: block; text-indent: 0 !important;
         }
-        .chapter-title { font-size: 32px; } /* 大章 */
-        .section-title { font-size: 28px; } /* 小节 */
-        .part-title { font-size: 24px; opacity: 0.9; }
+        .chapter-title { font-size: 28px; } 
+        .section-title { font-size: 24px; }
+        .part-title { font-size: 22px; opacity: 0.9; }
 
         .body-para { 
-            font-size: 22px; /* 正文 */
-            line-height: 1.8; text-align: justify; 
-            text-indent: 2em !important; margin-bottom: 1.2em; font-weight: normal;
+            font-size: 20px; line-height: 1.7; text-align: justify; 
+            text-indent: 2em !important; margin-bottom: 1.1em; font-weight: normal;
         }
 
-        .chapter-divider { border: 0; height: 1px; background: var(--border); margin: 45px 0; }
+        .chapter-divider { border: 0; height: 1px; background: var(--border); margin: 35px 0; }
 
         /* 🚀 按钮极致压缩 */
-        .control-group { display: flex; width: 94%; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .control-group { display: flex; width: 94%; justify-content: space-between; align-items: center; }
         .nav-btn { 
             width: 48%; height: 42px; border: none; border-radius: 10px; 
             font-size: 16px; font-weight: bold; color: white; cursor: pointer; 
@@ -61,11 +63,7 @@
         #next-btn { background-color: #3498db; }
         
         .upload-container { padding: 40px 20px; text-align: center; margin-top: 40px; }
-        #resume-btn { 
-            display: none; width: 80%; padding: 14px; margin: 0 auto 20px auto; 
-            background: #27ae60; color: white; border: none; border-radius: 50px; 
-            font-size: 17px; font-weight: bold;
-        }
+        #resume-btn { display: none; width: 80%; padding: 14px; margin-bottom: 20px; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 17px; font-weight: bold; }
         #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 200; }
         
         @keyframes flash { 0% { background-color: rgba(87, 172, 255, 0.2); } 100% { background-color: transparent; } }
@@ -87,13 +85,13 @@
     <article id="viewer"></article>
 
     <footer class="footer">
-        <div id="page-info" style="font-size:10px; color:#999; margin-bottom:4px;"></div>
+        <div id="page-info" style="font-size:9px; color:#999; margin-bottom:2px;"></div>
         <div class="control-group">
             <button id="prev-btn" class="nav-btn" disabled>上一组</button>
             <button id="next-btn" class="nav-btn" disabled>下一组</button>
         </div>
     </footer>
-    <div id="loading">正在极致压缩渲染...</div>
+    <div id="loading">正在锁定 10px 底部...</div>
 
     <script>
         var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 10;
@@ -159,7 +157,8 @@
                     let section = spine.get(i);
                     let doc = await section.load(book.load.bind(book));
                     let bodyNode = doc.body || doc.documentElement || doc;
-                    let paragraphs = (bodyNode.innerText || bodyNode.textContent || "").split(/\n+/);
+                    let text = bodyNode.innerText || bodyNode.textContent || "";
+                    let paragraphs = text.split(/\n+/);
                     
                     let chapterSection = document.createElement('section'); 
                     if (i > startIndex) { let hr = document.createElement('hr'); hr.className = 'chapter-divider'; chapterSection.appendChild(hr); }
@@ -171,7 +170,7 @@
                     cleanParas.forEach(function(pText, idx) {
                         var isPart = pText.includes("篇") && pText.length < 15;
                         var isChapter = pText.includes("章") && pText.length < 25;
-                        var isSection = (pText.includes("节") || pText.length < 18) && pText.length < 35;
+                        var isSection = (pText.includes("节") || pText.length < 15) && pText.length < 35;
 
                         if (isPart || isChapter || isSection) {
                             if (pText === lastTitleText) return; 
@@ -201,7 +200,6 @@
             }
             document.getElementById('loading').style.display = 'none';
 
-            // 🚀 精准跳转执行
             setTimeout(() => {
                 let target = null;
                 if (targetLabel) {
@@ -218,7 +216,7 @@
 
                 if (target) {
                     target.scrollIntoView({ behavior: 'auto', block: 'start' }); 
-                    window.scrollBy(0, -65); 
+                    window.scrollBy(0, -60); 
                     target.classList.add('highlight-target');
                 } else if (!targetScrollIndex) {
                     window.scrollTo(0, 0);
@@ -226,7 +224,6 @@
             }, 200);
         }
 
-        /* 🚀 跳转修正：全量遍历路径 */
         function loadChapterByMatch(href, label) {
             const baseHref = href.split('#')[0];
             let targetIndex = -1; 
