@@ -3,96 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>EPUB纯净版阅读器</title>
+    <title>EPUB 避难所 - iPhone 完美还原版</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        /* 🎨 核心视觉变量系统：日间原色，夜间极客黑 */
+        /* 🎨 核心视觉：适配 iPhone 图书色彩系统 */
         :root {
-            --bg: #FAF6EF; 
-            --text: #333; 
-            --h2-color: #000; 
-            --border: #e0e0e0; 
-            --toc-bg: #fdfbf7;
-            --divider: rgba(0, 0, 0, 0.1);
+            --bg: #F2F2F7; /* 浅灰背景 */
+            --text: #3A3A3C; 
+            --accent: #007AFF; /* iPhone 蓝色 */
+            --border: #C6C6C8;
         }
 
-        /* 🌙 极客级系统自动感光 */
         @media (prefers-color-scheme: dark) {
             :root {
-                --bg: #1A1A1A; 
-                --text: #F0F0F0; 
-                --h2-color: #FFFFFF; 
-                --border: #333333; 
-                --toc-bg: #222222;
-                --divider: rgba(255, 255, 255, 0.1);
+                --bg: #1C1C1E; 
+                --text: #E5E5E7; 
+                --accent: #0A84FF;
+                --border: #38383A;
             }
         }
 
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            margin: 0; padding: 0; 
-            background-color: var(--bg); 
-            color: var(--text); 
-            padding-bottom: 120px; padding-top: 60px; 
-            transition: background-color 0.5s ease, color 0.5s ease; /* 丝滑切换动效 */
+            font-family: "PingFang SC", "STHeiti", system-ui, -apple-system, sans-serif; 
+            margin: 0; padding: 0; background-color: var(--bg); color: var(--text); 
+            padding-bottom: 120px; padding-top: 65px;
+            transition: background 0.3s;
         }
 
-        .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; z-index: 100; transition: background 0.5s ease; }
-        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 110px; background: var(--bg); box-shadow: 0 -5px 20px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; transition: background 0.5s ease; }
-        .ver-tag { position: absolute; top: 5px; left: 5px; font-size: 10px; color: purple; font-weight: bold; z-index: 101; background: rgba(243, 229, 245, 0.5); padding: 2px 4px; border-radius: 4px; opacity: 0.6; }
-        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--toc-bg); padding-left: 10px; -webkit-appearance: none; color: var(--text); }
+        .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; z-index: 100; }
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 110px; background: var(--bg); border-top: 1px solid var(--border); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; }
+        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); padding-left: 10px; -webkit-appearance: none; }
         
-        article#viewer { background: var(--bg); padding: 20px 20px; min-height: 80vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; display: block; transition: background 0.5s ease; }
+        article#viewer { padding: 0 25px; min-height: 80vh; display: block; overflow-x: hidden; }
+
+        /* 🖋️ 1:1 还原 iPhone 标题层级 */
+        .apple-heading { 
+            color: var(--accent) !important; 
+            text-align: center; 
+            font-weight: 500; 
+            margin: 1.2em 0;
+            line-height: 1.4;
+            display: block;
+            text-indent: 0 !important;
+        }
+        .chapter-title { font-size: 24px; margin-top: 1.5em; } /* “第一章” */
+        .section-title { font-size: 22px; margin-bottom: 1.5em; } /* “第一节” */
+        .part-title { font-size: 20px; opacity: 0.8; } /* “上篇” */
+
+        /* 🖋️ 正文排版：缩进与字号对齐 */
+        .body-para { 
+            font-size: 20px; /* 调整为更适中的字号 */
+            line-height: 1.7; 
+            text-align: justify;
+            text-indent: 2em; /* 强制缩进 */
+            margin-bottom: 1.2em;
+            font-weight: 400;
+        }
+
+        .chapter-divider { border: 0; height: 1px; background: var(--border); margin: 60px 0; }
+        .control-group { display: flex; width: 92%; justify-content: space-between; }
+        .nav-btn { width: 48%; height: 50px; border: none; border-radius: 12px; font-size: 17px; font-weight: 600; color: white; cursor: pointer; }
+        #prev-btn { background-color: #8E8E93; } 
+        #next-btn { background-color: #007AFF; }
         
-        h2 { color: var(--h2-color); font-weight: 900; font-size: 1.8em; margin-top: 40px; margin-bottom: 30px; line-height: 1.4; }
-        p { margin-bottom: 24px; text-align: justify; outline: none; font-size: 22px; font-weight: normal; line-height: 1.8; }
-        
-        .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), var(--divider), rgba(0, 0, 0, 0)); margin-top: 50px; margin-bottom: 50px; }
-        @keyframes flash { 0% { background-color: #ffe69c; } 100% { background-color: transparent; } }
-        .highlight-target { animation: flash 2s ease-out; }
-        .control-group { display: flex; width: 90%; justify-content: space-between; align-items: center; }
-        .nav-btn { width: 48%; height: 55px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; color: white; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        #prev-btn { background-color: #bdc3c7; color: #555; } 
-        #next-btn { background-color: #3498db; }
-        .upload-container { padding: 40px 20px; text-align: center; margin-top: 40px; }
-        #resume-btn { display: none; width: 80%; padding: 15px; margin: 0 auto 20px auto; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; }
-        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 200; }
+        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 12px; display: none; z-index: 200; }
     </style>
 </head>
 <body>
-    <header class="header">
-        <div class="ver-tag"></div>
-        <select id="toc-select" disabled><option></option></select>
-    </header>
+    <header class="header"><select id="toc-select" disabled><option>跳转目录...</option></select></header>
 
-    <div class="upload-container" id="upload-area">
-        <h2>EPUB纯净版阅读器</h2>
-        <button id="resume-btn">🔄 继续阅读</button>
-        <div style="margin-top: 20px;">
-            <label for="file-input" style="color: #3498db; cursor: pointer;">📂 打开书籍</label>
-            <input type="file" id="file-input" style="display: none;">
-        </div>
+    <div id="upload-area" style="padding: 100px 20px; text-align: center;">
+        <button id="resume-btn" style="display:none; width: 80%; padding: 15px; background: #34C759; color: white; border: none; border-radius: 50px; font-size: 18px; margin-bottom: 20px;">🔄 继续阅读</button>
+        <label for="file-input" style="color: #007AFF; font-weight: bold; font-size: 20px; cursor: pointer;">📂 导入 EPUB 书籍</label>
+        <input type="file" id="file-input" style="display: none;">
     </div>
 
     <article id="viewer"></article>
 
     <footer class="footer">
-        <div id="page-info" style="font-size:12px; color:#999; margin-bottom:8px;"></div>
+        <div id="page-info" style="font-size:12px; color:#8E8E93; margin-bottom:8px;"></div>
         <div class="control-group">
             <button id="prev-btn" class="nav-btn" disabled>上一组</button>
             <button id="next-btn" class="nav-btn" disabled>下一组</button>
         </div>
     </footer>
-    <div id="loading">处理中...</div>
+    <div id="loading">排版引擎加载中...</div>
 
     <script>
         var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 10;
-        var TITLE_KEYWORDS = ["第", "章", "Chapter", "序", "前言", "Prologue", "Introduction", "卷", "部", "节", "Part"];
-        var JUNK_REGEX = /^(cover|unknown|未知|封面|title page|copyright|content|目录|前言|author|book|page|\d+$)/i;
+        var TITLE_KEYWORDS = ["第", "章", "Chapter", "序", "前言", "节", "Part", "篇"];
+        var JUNK_REGEX = /^(cover|unknown|未知|封面|copyright|author|\d+$)/i;
 
-        localforage.config({ name: 'listenflow_db' });
+        localforage.config({ name: 'apple_reader_db' });
 
         window.onload = function() { checkSavedBook(); };
         async function checkSavedBook() {
@@ -116,155 +120,81 @@
                     spine = s;
                     book.loaded.navigation.then(function(toc) {
                         var select = document.getElementById('toc-select');
-                        select.innerHTML = '<option value="-1">📖 跳转目录...</option>';
+                        select.innerHTML = '<option value="-1">📖 目录</option>';
                         var flatten = function(items) {
                             items.forEach(function(item) {
                                 var option = document.createElement('option');
-                                option.text = item.label.trim(); option.value = item.href + "|" + item.label.trim();
+                                option.text = item.label.trim(); option.value = item.href;
                                 select.add(option); if (item.subitems) flatten(item.subitems);
                             });
                         };
                         flatten(toc.toc); select.disabled = false;
-                        select.onchange = function() {
-                            if(this.value !== "-1") { var parts = this.value.split('|'); loadChapterByMatch(parts[0], parts[1]); }
-                        };
+                        select.onchange = function() { if(this.value !== "-1") loadChapterByMatch(this.value); };
                     });
                     document.getElementById('upload-area').style.display = 'none';
                     document.getElementById('prev-btn').disabled = document.getElementById('next-btn').disabled = false;
-                    var startIdx = isResume ? (Math.floor(parseInt(localStorage.getItem('exactChapterIndex') || 0) / BATCH_SIZE) * BATCH_SIZE) : 0;
-                    renderBatch(startIdx, isResume ? parseInt(localStorage.getItem('exactChapterIndex')) : null);
+                    var startIdx = isResume ? (Math.floor(parseInt(localStorage.getItem('appleChapterIdx') || 0) / BATCH_SIZE) * BATCH_SIZE) : 0;
+                    renderBatch(startIdx);
                 });
             }; reader.readAsArrayBuffer(data);
         }
 
-        /* 🚀 核心修复：精准识别标题边界，彻底解决 7:22, 7:27, 8:13, 8:59 问题 */
-        async function renderBatch(startIndex, targetScrollIndex = null) {
+        async function renderBatch(startIndex) {
             var viewer = document.getElementById('viewer'); viewer.innerHTML = '';
             currentStartIndex = startIndex;
+            document.getElementById('loading').style.display = 'block';
             var endIndex = Math.min(startIndex + BATCH_SIZE, spine.length);
-            document.getElementById('page-info').innerText = `第 ${startIndex + 1} - ${endIndex} 章`;
+            document.getElementById('page-info').innerText = `章节 ${startIndex + 1} - ${endIndex}`;
             
             for (let i = startIndex; i < endIndex; i++) {
                 try {
                     let section = spine.get(i);
                     let doc = await section.load(book.load.bind(book));
-                    doc.querySelectorAll('style, script, link, meta').forEach(item => item.remove());
-                    let text = doc.body ? doc.body.innerText : (doc.textContent || "");
+                    let text = doc.body.innerText || doc.body.textContent || "";
                     let paragraphs = text.split(/\n+/);
                     
                     let chapterSection = document.createElement('section'); 
-                    chapterSection.id = 'chapter-' + i;
                     if (i > startIndex) { let hr = document.createElement('hr'); hr.className = 'chapter-divider'; chapterSection.appendChild(hr); }
                     
-                    let titleBuffer = ""; 
-                    let titleIndex = -1;
-                    let hasShownMainTitle = false; 
-                    let lastRenderedTitleText = ""; // 记录最终确定的标题
-
                     let cleanParas = paragraphs.map(p => p.replace(/[\u00a0\u200b\u3000]/g, ' ').trim())
                                                .filter(p => p.length > 0 && !JUNK_REGEX.test(p));
 
-                    cleanParas.forEach(function(pText, idx) {
-                        var hasKeyword = TITLE_KEYWORDS.some(k => pText.includes(k));
-                        
-                        // 🚀 逻辑 1：解决 8:59 标题与正文合并问题
-                        // 如果是包含关键字的长段落，尝试切分出标题
-                        if (!hasShownMainTitle && hasKeyword && pText.length >= 60) {
-                             // 寻找第一个明显的停顿点（空格或中文标点）作为标题结尾
-                             let splitIdx = pText.search(/[\s。！？]/); 
-                             if (splitIdx > 0 && splitIdx < 45) {
-                                 let titlePart = pText.substring(0, splitIdx).trim();
-                                 let bodyPart = pText.substring(splitIdx).trim();
-                                 
-                                 // 渲染标题
-                                 lastRenderedTitleText = titlePart;
-                                 let h2 = document.createElement('h2'); h2.innerText = titlePart;
-                                 h2.setAttribute('data-index', i);
-                                 chapterSection.appendChild(h2);
-                                 
-                                 // 渲染剩余正文
-                                 if (bodyPart) {
-                                     let el = document.createElement('p'); el.innerText = bodyPart;
-                                     chapterSection.appendChild(el);
-                                 }
-                                 hasShownMainTitle = true; return;
-                             }
-                        }
+                    cleanParas.forEach(function(pText) {
+                        // 🚀 逻辑：精准判定标题类型
+                        var isPart = pText.includes("篇") && pText.length < 15;
+                        var isChapter = pText.includes("章") && pText.length < 15;
+                        var isSection = pText.includes("节") && pText.length < 25;
 
-                        // 🚀 逻辑 2：多行标题收集与内部去重 (解决 7:22)
-                        var isShortLine = pText.length < 50 && !/[。.!！?？”"]$/.test(pText);
-                        if (idx < 10 && !hasShownMainTitle && (hasKeyword || (titleBuffer !== "" && isShortLine))) {
-                             if (titleBuffer !== "") titleBuffer += " ";
-                             titleBuffer += pText;
-                             if (titleIndex === -1) titleIndex = i;
-
-                             // 检查下一行是否还是标题，如果不是，则立即渲染当前 buffer
-                             let nextPara = cleanParas[idx+1];
-                             let nextIsTitle = nextPara && (TITLE_KEYWORDS.some(k => nextPara.includes(k)) || nextPara.length < 30);
-                             if (!nextIsTitle) {
-                                 // 标题内部去重
-                                 lastRenderedTitleText = Array.from(new Set(titleBuffer.split(/\s+/))).join(' ');
-                                 let h2 = document.createElement('h2'); h2.innerText = lastRenderedTitleText;
-                                 h2.setAttribute('data-index', titleIndex);
-                                 chapterSection.appendChild(h2);
-                                 titleBuffer = ""; hasShownMainTitle = true;
-                             }
-                             return;
-                        }
-
-                        // 🚀 逻辑 3：正文回声消除 (解决 7:27)
-                        let finalParaText = pText;
-                        if (hasShownMainTitle && lastRenderedTitleText && finalParaText.startsWith(lastRenderedTitleText)) {
-                             // 剔除重复的标题头部
-                             finalParaText = finalParaText.replace(lastRenderedTitleText, "").trim();
-                             if (finalParaText.length < 2 && /^[，。！？；：、]*$/.test(finalParaText)) return;
-                        }
-
-                        if (finalParaText.length > 0) {
-                            let el = document.createElement('p'); el.innerText = finalParaText;
-                            if (titleIndex === -1 && !hasShownMainTitle) { el.setAttribute('data-index', i); titleIndex = -2; }
+                        if (isPart || isChapter || isSection) {
+                            let el = document.createElement('div');
+                            el.className = 'apple-heading';
+                            if (isPart) el.classList.add('part-title');
+                            if (isChapter) el.classList.add('chapter-title');
+                            if (isSection) el.classList.add('section-title');
+                            el.innerText = pText;
+                            chapterSection.appendChild(el);
+                        } else {
+                            // 🚀 逻辑：其余全部作为带缩进的正文
+                            let el = document.createElement('p');
+                            el.className = 'body-para';
+                            el.innerText = pText;
                             chapterSection.appendChild(el);
                         }
                     });
-                    
+
                     if (chapterSection.hasChildNodes()) viewer.appendChild(chapterSection);
-                } catch (e) {
-                    // 🚀 逻辑 4：解析失败友好提示 (解决 8:13)
-                    let errNode = document.createElement('div');
-                    errNode.style.color = 'red'; errNode.style.padding = '10px';
-                    errNode.innerText = `[章节 ${i+1} 解析失败，请尝试下一组]`;
-                    viewer.appendChild(errNode);
-                }
+                } catch (e) { console.error(e); }
             }
             document.getElementById('loading').style.display = 'none';
-            if (targetScrollIndex !== null) {
-                setTimeout(() => {
-                    var target = document.querySelector(`[data-index='${targetScrollIndex}']`);
-                    if (target) {
-                        target.scrollIntoView({ behavior: 'auto', block: 'start' }); window.scrollBy(0, -70);
-                        target.classList.add('highlight-target');
-                        target.setAttribute('tabindex', '-1'); target.focus();
-                        try {
-                            const range = document.createRange(); const sel = window.getSelection();
-                            range.selectNodeContents(target); sel.removeAllRanges(); sel.addRange(range);
-                        } catch(err) {}
-                    }
-                }, 250);
-            }
+            window.scrollTo(0, 0);
         }
 
-        function loadChapterByMatch(href, label) {
+        function loadChapterByMatch(href) {
             var targetIndex = -1; var spineItem = book.spine.get(href);
-            if (spineItem) { targetIndex = spineItem.index; } 
-            else {
-                var targetName = decodeURIComponent(href.split('#')[0]).split('/').pop();
-                for(var i=0; i<spine.length; i++) {
-                    if (decodeURIComponent(spine[i].href).indexOf(targetName) !== -1) { targetIndex = i; break; }
-                }
-            }
-            if(targetIndex !== -1) {
-                localStorage.setItem('exactChapterIndex', targetIndex);
-                renderBatch(Math.floor(targetIndex / BATCH_SIZE) * BATCH_SIZE, targetIndex);
+            if (spineItem) { 
+                targetIndex = spineItem.index; 
+                localStorage.setItem('appleChapterIdx', targetIndex);
+                renderBatch(Math.floor(targetIndex / BATCH_SIZE) * BATCH_SIZE);
             }
         }
         document.getElementById('prev-btn').onclick = function() { if (currentStartIndex >= BATCH_SIZE) renderBatch(currentStartIndex - BATCH_SIZE); };
