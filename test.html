@@ -8,19 +8,15 @@
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        /* 🎨 视觉系统微调：更浅的蓝，更分明的层级 */
+        /* 🎨 14:53 视觉方案对齐 */
         :root {
-            --bg: #FAF6EF; 
-            --text: #333; 
-            --border: #e2e2e2; 
-            --accent: #57ACFF; /* 🚀 更浅、更轻盈的 iOS 蓝色 (日间) */
+            --bg: #FAF6EF; --text: #333; --border: #e2e2e2; 
+            --accent: #57ACFF; /* 更浅的日间蓝 */
         }
         @media (prefers-color-scheme: dark) {
             :root { 
-                --bg: #1A1A1A; 
-                --text: #F0F0F0; 
-                --border: #333333; 
-                --accent: #80CFFF; /* 🚀 更通透的蓝色 (夜间) */
+                --bg: #1A1A1A; --text: #F0F0F0; --border: #333333; 
+                --accent: #80CFFF; /* 更浅的夜间蓝 */
             }
         }
 
@@ -37,30 +33,23 @@
         
         article#viewer { padding: 0 20px; min-height: 80vh; display: block; overflow-x: hidden; }
         
-        /* 🖋️ 标题排版：字号加大 */
+        /* 🖋️ 标题排版 */
         .apple-heading { 
-            color: var(--accent) !important; 
-            text-align: center; 
-            font-weight: bold; 
-            margin: 1.6em 0 1.2em 0; 
-            line-height: 1.4; 
-            display: block; 
-            text-indent: 0 !important;
+            color: var(--accent) !important; text-align: center; font-weight: bold; 
+            margin: 1.6em 0 1.2em 0; line-height: 1.4; display: block; text-indent: 0 !important;
         }
-        .chapter-title { font-size: 32px; } /* 🚀 大章加大一号 */
-        .section-title { font-size: 28px; } /* 🚀 小节加大一号 */
+        .chapter-title { font-size: 32px; } /* 大章 */
+        .section-title { font-size: 28px; } /* 小节 */
         .part-title { font-size: 24px; opacity: 0.9; }
 
-        /* 🖋️ 正文排版：字号减小 */
+        /* 🖋️ 正文排版 */
         .body-para { 
-            font-size: 22px; /* 🚀 正文减小一号 */
-            line-height: 1.8; text-align: justify; 
-            text-indent: 2em !important; 
+            font-size: 22px; line-height: 1.8; text-align: justify; 
+            text-indent: 2em !important; /* 物理缩进 */
             margin-bottom: 1.2em; font-weight: normal;
         }
 
         .chapter-divider { border: 0; height: 1px; background: var(--border); margin: 60px 0; }
-        .control-group { display: flex; width: 90%; justify-content: space-between; }
         .nav-btn { width: 48%; height: 55px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; color: white; cursor: pointer; }
         #prev-btn { background-color: #bdc3c7; color: #555; } #next-btn { background-color: #3498db; }
         
@@ -95,7 +84,7 @@
             <button id="next-btn" class="nav-btn" disabled>下一组</button>
         </div>
     </footer>
-    <div id="loading">正在渲染高保真内容...</div>
+    <div id="loading">正在精准定位排版...</div>
 
     <script>
         var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 10;
@@ -185,9 +174,8 @@
                             chapterSection.appendChild(el);
                         } else {
                             let displayP = pText;
-                            if (lastTitleText && displayP.startsWith(lastTitleText)) {
-                                displayP = displayP.replace(lastTitleText, "").trim();
-                                if (displayP.length < 2) return;
+                            if (lastTitleText && displayP.startsWith(lastTitleText.substring(0, 5))) {
+                                if (displayP.length < lastTitleText.length + 5) return;
                             }
                             
                             let el = document.createElement('p');
@@ -216,8 +204,13 @@
             }
         }
 
+        /* 🚀 核心修复：解构 href，剥离锚点后再匹配 spine */
         function loadChapterByMatch(href) {
-            var targetIndex = -1; var spineItem = book.spine.get(href);
+            // 分割锚点，只取基础文件路径
+            const baseHref = href.split('#')[0];
+            var targetIndex = -1; 
+            var spineItem = book.spine.get(baseHref); 
+            
             if (spineItem) { 
                 targetIndex = spineItem.index; 
                 localStorage.setItem('exactIdx', targetIndex);
