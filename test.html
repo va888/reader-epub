@@ -3,103 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>EPUB 原版阅读器</title>
+    <title>EPUB 竖屏阅读器</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        /* 界面基础样式 - 仅控制阅读器外框，不影响书籍内容 */
+        /* 🎨 1. 恢复你指定的配色系统 */
+        :root {
+            --bg: #FAF6EF; 
+            --text: #333; 
+            --border: #e0e0e0;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1A1A1A; 
+                --text: #F0F0F0; 
+                --border: #333333; 
+            }
+        }
+
         body { 
             margin: 0; padding: 0; 
             height: 100vh; width: 100vw; 
-            overflow: hidden; /* 禁止整个页面滚动，由epubjs接管内部滚动 */
+            overflow: hidden; 
             display: flex; flex-direction: column;
-            background-color: #f4f4f4; /* 界面背景，书本没覆盖到的地方显示这个颜色 */
+            background-color: var(--bg); 
+            color: var(--text);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            transition: background-color 0.5s, color 0.5s;
         }
 
-        /* 顶部导航 */
         .header { 
             height: 50px; flex-shrink: 0; 
-            background: #fff; border-bottom: 1px solid #ddd; 
+            background: var(--bg); border-bottom: 1px solid var(--border); 
             display: flex; align-items: center; padding: 0 15px; 
-            z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            z-index: 10;
         }
 
-        /* 底部控制栏 */
+        /* 底部现在只用来显示进度，不需要翻页按钮了 */
         .footer { 
-            height: 60px; flex-shrink: 0; 
-            background: #fff; border-top: 1px solid #ddd; 
-            display: flex; justify-content: space-between; align-items: center; 
-            padding: 0 20px; z-index: 10;
+            height: 40px; flex-shrink: 0; 
+            background: var(--bg); border-top: 1px solid var(--border); 
+            display: flex; justify-content: center; align-items: center; 
+            z-index: 10; font-size: 12px; opacity: 0.8;
         }
 
-        /* 核心阅读区：完全交给 epub.js */
+        /* 2. 阅读区样式：允许滚动 */
         #viewer { 
             flex-grow: 1; 
             width: 100%; 
-            position: relative; 
-            background: #fff; /* 书本默认底色，如果书本有自定义背景会覆盖它 */
+            overflow-y: auto; /* 允许垂直滚动 */
+            -webkit-overflow-scrolling: touch;
         }
 
-        /* 控件样式 */
-        select#toc-select { max-width: 200px; padding: 5px; border-radius: 4px; border: 1px solid #ccc; }
-        .nav-btn { 
-            padding: 10px 20px; border: none; border-radius: 5px; 
-            background-color: #3498db; color: white; font-weight: bold; cursor: pointer; 
+        select#toc-select { 
+            max-width: 200px; padding: 5px; border-radius: 4px; 
+            border: 1px solid var(--border); 
+            background: rgba(255,255,255,0.1); color: var(--text);
         }
-        .nav-btn:disabled { background-color: #ccc; cursor: not-allowed; }
         
-        /* 初始上传界面 */
         .upload-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(255,255,255,0.95); z-index: 100;
+            background: var(--bg); z-index: 100;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
         }
-        .upload-btn-group { margin-top: 20px; display: flex; gap: 20px; }
-        .big-btn { padding: 15px 30px; font-size: 18px; border-radius: 8px; border: none; cursor: pointer; color: white; }
+        .big-btn { padding: 15px 30px; font-size: 18px; border-radius: 8px; border: none; cursor: pointer; color: white; margin-top: 20px;}
+        .btn-blue { background: #3498db; }
         .btn-green { background: #27ae60; }
-        .btn-blue { background: #2980b9; }
 
-        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 15px 25px; border-radius: 8px; z-index: 200; display: none; }
+        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 15px 25px; border-radius: 8px; z-index: 200; display: none; }
     </style>
 </head>
 <body>
 
     <header class="header">
-        <span style="font-weight:bold; color:#333; margin-right:10px;">EPUB 原版</span>
         <select id="toc-select"><option>加载中...</option></select>
     </header>
 
     <div id="viewer"></div>
 
     <footer class="footer">
-        <button id="prev-btn" class="nav-btn">PREV</button>
-        <div id="progress-info" style="font-size: 12px; color: #666;"></div>
-        <button id="next-btn" class="nav-btn">NEXT</button>
+        <div id="progress-info">阅读进度: 0%</div>
     </footer>
 
     <div class="upload-overlay" id="upload-area">
-        <h2 style="color:#333;">打开书籍 (原格式模式)</h2>
-        <div class="upload-btn-group">
-            <button class="big-btn btn-green" id="resume-btn" style="display:none;">🔄 继续上次阅读</button>
-            <label class="big-btn btn-blue" style="display:flex; align-items:center;">
-                📂 选择文件
-                <input type="file" id="file-input" style="display: none;">
-            </label>
-        </div>
+        <h2 style="color:var(--text);">EPUB 竖屏阅读器</h2>
+        <button class="big-btn btn-green" id="resume-btn" style="display:none;">🔄 继续上次阅读</button>
+        <label class="big-btn btn-blue" style="display:flex; align-items:center;">
+            📂 选择文件
+            <input type="file" id="file-input" style="display: none;">
+        </label>
     </div>
 
-    <div id="loading">正在渲染原书排版...</div>
+    <div id="loading">排版处理中...</div>
 
     <script>
         var book = null;
         var rendition = null;
-        
-        // 配置本地存储
-        localforage.config({ name: 'epub_original_db' });
+        localforage.config({ name: 'epub_scroll_db' });
 
-        // 1. 初始化检查是否有缓存书籍
+        // 获取当前配色的 Hex 值，用于注入到 iframe 内部
+        function getThemeColors() {
+            const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            return {
+                bg: isDark ? '#1A1A1A' : '#FAF6EF',
+                text: isDark ? '#F0F0F0' : '#333333'
+            };
+        }
+
         window.onload = async function() {
             var savedBook = await localforage.getItem('currentBook');
             if (savedBook) {
@@ -109,92 +121,91 @@
             }
         };
 
-        // 2. 文件选择监听
         document.getElementById('file-input').onchange = function(e) {
-            var file = e.target.files[0];
-            if (!file) return;
-            // 保存文件并加载
-            localforage.setItem('currentBook', file).then(() => {
-                loadBook(file);
-            });
+            var file = e.target.files[0]; if (!file) return;
+            localforage.setItem('currentBook', file).then(() => loadBook(file));
         };
 
-        // 3. 核心加载逻辑
         function loadBook(bookData) {
             document.getElementById('upload-area').style.display = 'none';
             document.getElementById('loading').style.display = 'block';
 
-            // 初始化 Book 对象
             var reader = new FileReader();
             reader.onload = function(e) {
                 book = ePub(e.target.result);
                 
-                // --- 关键修改：渲染设置 ---
-                // method: 'default' 表示分页模式（类似纸书）
-                // width/height: 100% 填满父容器
+                // --- 核心修改：改为竖向滚动 (scrolled) ---
                 rendition = book.renderTo("viewer", {
                     width: "100%",
                     height: "100%",
-                    method: "default" 
+                    flow: "scrolled",       // 开启滚动模式
+                    manager: "continuous"   // 连续渲染章节
                 });
 
-                // 显示书籍内容
-                var savedCfi = localStorage.getItem('currentCfi');
+                // --- 3. 样式注入：修改背景色和字体大小 ---
+                var colors = getThemeColors();
+                rendition.themes.register("user-theme", {
+                    "body": { 
+                        "background-color": `${colors.bg} !important`, 
+                        "color": `${colors.text} !important`,
+                        "font-family": "sans-serif !important",
+                        "font-size": "125% !important",  /* 字体放大 */
+                        "line-height": "1.8 !important",
+                        "padding": "10px 15px !important"
+                    },
+                    "p": {
+                        "font-size": "1em !important"
+                    },
+                    "img": {
+                        "max-width": "100% !important" /* 确保图片不撑破屏幕 */
+                    }
+                });
+
+                var savedCfi = localStorage.getItem('currentCfi_scroll');
                 var displayPromise = savedCfi ? rendition.display(savedCfi) : rendition.display();
 
                 displayPromise.then(() => {
+                    rendition.themes.select("user-theme"); // 应用自定义样式
                     document.getElementById('loading').style.display = 'none';
                     initToc();
                 });
 
-                // 监听位置变化，保存进度
+                // 监听滚动位置保存
                 rendition.on("relocated", function(location) {
-                    localStorage.setItem('currentCfi', location.start.cfi);
-                    // 更新页码/百分比显示
-                    if (location.start.displayed && location.start.displayed.page && location.start.displayed.total) {
-                        document.getElementById('progress-info').innerText = 
-                            `${location.start.displayed.page} / ${location.start.displayed.total}`;
+                    localStorage.setItem('currentCfi_scroll', location.start.cfi);
+                    // 计算粗略百分比
+                    if(book.locations.length() > 0) {
+                        var percentage = Math.floor(location.start.percentage * 100);
+                        document.getElementById('progress-info').innerText = `阅读进度: ${percentage}%`;
                     } else {
-                        // 如果书籍没有内置页码，尝试显示百分比
-                        // 注意：百分比计算需要 Locations 对象生成，这里简化处理，仅作为示例
+                        // 如果没有生成 location，先显示章节名
+                        document.getElementById('progress-info').innerText = `当前位置: 章节 ${location.start.index}`;
                     }
                 });
+                
+                // 必须在加载后生成 location 才能计算百分比（耗时操作，后台进行）
+                book.ready.then(() => book.locations.generate(1000)); 
 
-                // 绑定按钮事件
-                document.getElementById('prev-btn').onclick = () => rendition.prev();
-                document.getElementById('next-btn').onclick = () => rendition.next();
-
-                // 键盘翻页支持
-                document.addEventListener("keyup", function(e) {
-                    if ((e.keyCode || e.which) == 37) rendition.prev();
-                    if ((e.keyCode || e.which) == 39) rendition.next();
-                });
             };
             reader.readAsArrayBuffer(bookData);
         }
 
-        // 4. 生成目录
         function initToc() {
             book.loaded.navigation.then(function(toc) {
                 var select = document.getElementById('toc-select');
-                select.innerHTML = '<option value="">📖 目录跳转...</option>';
-                
+                select.innerHTML = '<option value="">📖 跳转目录...</option>';
                 var flatten = function(items, level) {
                     items.forEach(function(item) {
                         var option = document.createElement('option');
-                        var indent = "&nbsp;".repeat(level * 4);
-                        option.innerHTML = indent + item.label.trim();
+                        option.innerHTML = "&nbsp;".repeat(level * 4) + item.label.trim();
                         option.value = item.href;
                         select.add(option);
                         if (item.subitems) flatten(item.subitems, level + 1);
                     });
                 };
                 flatten(toc.toc, 0);
-
                 select.onchange = function() {
-                    if (this.value) {
-                        rendition.display(this.value);
-                    }
+                    if (this.value) rendition.display(this.value);
                 };
             });
         }
