@@ -3,247 +3,221 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>EPUB阅读器 (目录修复版)</title>
+    <title>EPUB 终极调试版</title>
     <script src="https://lib.baomitu.com/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://unpkg.com/epubjs@0.3.93/dist/epub.min.js"></script>
+    <script src="https://lib.baomitu.com/epub.js/0.3.88/epub.min.js"></script>
     <script src="https://lib.baomitu.com/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        :root { --bg: #FAF6EF; --text: #333; --h2: #000; --border: #e0e0e0; --toc-bg: #fdfbf7; }
-        @media (prefers-color-scheme: dark) { :root { --bg: #1A1A1A; --text: #CCC; --h2: #FFF; --border: #333; --toc-bg: #222; } }
+        body { margin: 0; padding: 0; background: #FAF6EF; color: #333; font-family: sans-serif; }
         
-        body { font-family: -apple-system, sans-serif; background: var(--bg); color: var(--text); padding: 60px 0 120px 0; margin: 0; }
-        
-        .header { position: fixed; top: 0; width: 100%; height: 60px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; z-index: 100; box-sizing: border-box; }
-        #toc-select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--toc-bg); color: var(--text); font-size: 16px; outline: none; }
-        
-        #viewer { padding: 20px; min-height: 80vh; }
-        
-        /* 样式 */
-        h2 { color: var(--h2); text-align: center; margin: 60px 0 30px 0; font-size: 1.5em; border-bottom: 1px dashed var(--border); padding-bottom: 10px; }
-        p { text-indent: 2em; line-height: 1.8; font-size: 19px; margin-bottom: 15px; text-align: justify; }
-        img { max-width: 100%; height: auto; display: block; margin: 10px auto; }
-        
-        .footer { position: fixed; bottom: 0; width: 100%; height: 100px; background: var(--bg); border-top: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
-        .nav-btn { width: 40%; height: 45px; margin: 5px; border-radius: 25px; border: none; font-weight: bold; color: white; font-size: 16px; }
-        #prev-btn { background: #95a5a6; } #next-btn { background: #3498db; }
-        
-        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: #fff; padding: 15px 30px; border-radius: 10px; display: none; z-index: 200; }
-        
-        .active-chapter { animation: highlight 1.5s ease-out; }
-        @keyframes highlight { 0% { background: rgba(255, 255, 0, 0.2); } 100% { background: transparent; } }
+        /* 调试控制台：如果出错，这里会显示红字 */
+        #debug-console {
+            background: #000; color: #0f0; font-family: monospace; font-size: 12px;
+            padding: 10px; border-bottom: 2px solid #333; max-height: 150px; overflow-y: auto;
+            display: block; /* 默认显示，确诊后可隐藏 */
+        }
+        .log-err { color: #ff3333; font-weight: bold; }
+        .log-info { color: #ffff33; }
 
-        .upload-area { text-align: center; padding-top: 50px; }
-        #file-input { display: none; }
-        .file-label { background: #3498db; color: #fff; padding: 10px 30px; border-radius: 5px; cursor: pointer; display: inline-block; margin-top: 20px; }
-        #resume-btn { display: none; margin: 0 auto 20px auto; padding: 10px 30px; background: #27ae60; color: white; border: none; border-radius: 20px; font-size: 16px; cursor: pointer; }
+        .header { position: sticky; top: 0; background: #FAF6EF; border-bottom: 1px solid #ccc; padding: 10px; z-index: 100; display: flex; gap: 10px; }
+        select { flex: 1; padding: 8px; font-size: 16px; }
+        
+        #viewer { padding: 20px 15px; min-height: 60vh; font-size: 18px; line-height: 1.8; }
+        /* 强制覆盖书籍原本的样式，保证缩进 */
+        #viewer p { text-indent: 2em !important; margin-bottom: 1em !important; text-align: justify; }
+        #viewer img { max-width: 100%; height: auto; display: block; margin: 10px auto; }
+        
+        .footer { position: fixed; bottom: 0; width: 100%; background: #FAF6EF; border-top: 1px solid #ccc; padding: 15px 0; text-align: center; display: flex; justify-content: space-around; }
+        button { padding: 10px 30px; border-radius: 20px; border: none; background: #3498db; color: white; font-size: 16px; }
+        button:disabled { background: #ccc; }
+        
+        #upload-area { padding: 50px 20px; text-align: center; }
     </style>
 </head>
 <body>
 
-<header class="header">
-    <select id="toc-select" disabled><option>加载中...</option></select>
-</header>
+    <div id="debug-console">系统启动...<br>等待脚本加载...</div>
 
-<div id="upload-box" class="upload-area">
-    <h2>EPUB 阅读器</h2>
-    <button id="resume-btn">继续上次阅读</button>
-    <div>
-        <label for="file-input" class="file-label">📂 打开书籍</label>
-        <input type="file" id="file-input" accept=".epub">
+    <div class="header">
+        <select id="toc" disabled><option>目录加载中...</option></select>
     </div>
-</div>
 
-<div id="viewer"></div>
-
-<footer class="footer">
-    <div id="page-info" style="font-size: 12px; color: #999; margin-bottom: 5px;"></div>
-    <div style="width: 100%; text-align: center;">
-        <button id="prev-btn" class="nav-btn" disabled>上一页</button>
-        <button id="next-btn" class="nav-btn" disabled>下一页</button>
+    <div id="upload-area">
+        <h2 style="margin-bottom: 30px;">EPUB 阅读器 (调试版)</h2>
+        <input type="file" id="file" style="transform: scale(1.2);">
+        <p style="color: #999; margin-top: 20px;">请选择 epub 文件</p>
     </div>
-</footer>
 
-<div id="loading">加载中...</div>
+    <div id="viewer"></div>
+
+    <div class="footer">
+        <button id="prev" onclick="changePage(-1)" disabled>上一章</button>
+        <button id="next" onclick="changePage(1)" disabled>下一章</button>
+    </div>
 
 <script>
-    var book = null, spine = [], currentStart = 0, BATCH = 5;
-
-    // 初始化
-    localforage.config({ name: 'epub_db_v3' });
-    window.onload = function() {
-        checkResume();
+    // --- 1. 简易日志系统 (帮我们找原因) ---
+    function log(msg, type='normal') {
+        var c = document.getElementById('debug-console');
+        var line = document.createElement('div');
+        line.innerText = `> ${msg}`;
+        if(type==='error') line.className = 'log-err';
+        if(type==='info') line.className = 'log-info';
+        c.appendChild(line);
+        c.scrollTop = c.scrollHeight;
+        console.log(msg);
+    }
+    
+    window.onerror = function(msg, url, line) {
+        log(`全局错误: ${msg} (Line: ${line})`, 'error');
     };
 
-    // 检查缓存
-    async function checkResume() {
-        var blob = await localforage.getItem('bookBlob');
-        if(blob) {
-            var btn = document.getElementById('resume-btn');
-            btn.style.display = 'block';
-            btn.onclick = () => loadBook(blob, true);
-        }
-    }
+    // 检查核心库
+    if (typeof ePub === 'undefined') log("错误：epub.js 库加载失败！请检查网络", 'error');
+    else log("epub.js 库加载成功");
 
-    // 文件上传
-    document.getElementById('file-input').onchange = function(e) {
+    if (typeof JSZip === 'undefined') log("错误：JSZip 库加载失败！", 'error');
+    else log("JSZip 库加载成功");
+
+    // --- 变量 ---
+    var book = null;
+    var spine = [];
+    var currentIdx = 0;
+
+    // --- 2. 加载逻辑 ---
+    document.getElementById('file').onchange = function(e){
         var file = e.target.files[0];
-        if(file) {
-            localforage.setItem('bookBlob', file);
-            loadBook(file, false);
-        }
+        if(!file) return;
+        
+        document.getElementById('upload-area').style.display = 'none';
+        log("开始读取文件...");
+        
+        var reader = new FileReader();
+        reader.onload = function(evt) {
+            log("文件读取完成，正在解析 EPUB...");
+            try {
+                book = ePub(evt.target.result);
+                
+                // 等待 Spine (骨架) 加载
+                book.loaded.spine.then(function(s){
+                    spine = s;
+                    log(`解析成功！共 ${spine.length} 个章节`);
+                    document.getElementById('prev').disabled = false;
+                    document.getElementById('next').disabled = false;
+                    
+                    // 加载目录
+                    loadToc();
+                    // 渲染第一章
+                    renderChapter(0);
+                }).catch(function(err){
+                    log(`解析Spine失败: ${err}`, 'error');
+                });
+                
+            } catch(error) {
+                log(`EPUB初始化崩溃: ${error}`, 'error');
+            }
+        };
+        reader.readAsArrayBuffer(file);
     };
 
-    // 核心加载逻辑
-    function loadBook(data, isResume) {
-        document.getElementById('loading').style.display = 'block';
-        var reader = new FileReader();
-        reader.onload = function(e) {
-            book = ePub(e.target.result);
+    // --- 3. 目录加载 ---
+    function loadToc() {
+        book.loaded.navigation.then(function(toc){
+            var sel = document.getElementById('toc');
+            sel.innerHTML = '<option value="-1">📖 选择章节...</option>';
             
-            book.loaded.spine.then(s => {
-                spine = s;
-                // 加载目录
-                book.loaded.navigation.then(toc => {
-                    var select = document.getElementById('toc-select');
-                    select.innerHTML = '<option value="-1">📖 选择章节...</option>';
-                    
-                    var walk = (items) => {
-                        items.forEach(item => {
-                            var opt = document.createElement('option');
-                            opt.text = item.label.trim();
-                            opt.value = item.href; // 原始href
-                            select.add(opt);
-                            if(item.subitems) walk(item.subitems);
-                        });
-                    };
-                    if(toc.toc) walk(toc.toc);
-                    select.disabled = false;
-                    
-                    // 目录跳转事件
-                    select.onchange = function() {
-                        if(this.value !== "-1") jumpToChapter(this.value);
-                    };
+            // 扁平化目录函数
+            function walk(items) {
+                items.forEach(function(item){
+                    var opt = document.createElement('option');
+                    opt.text = item.label.trim();
+                    opt.value = item.href;
+                    sel.add(opt);
+                    if(item.subitems) walk(item.subitems);
                 });
-
-                document.getElementById('upload-box').style.display = 'none';
-                document.getElementById('prev-btn').disabled = false;
-                document.getElementById('next-btn').disabled = false;
-
-                var idx = isResume ? (parseInt(localStorage.getItem('idx')) || 0) : 0;
-                render(idx);
-            });
-        };
-        reader.readAsArrayBuffer(data);
+            }
+            if(toc.toc) walk(toc.toc);
+            sel.disabled = false;
+            
+            sel.onchange = function() {
+                if(this.value === "-1") return;
+                log(`尝试跳转: ${this.value}`);
+                jumpTo(this.value);
+            };
+        }).catch(e => log("目录读取失败 (非致命)", 'info'));
     }
 
-    // 🔴 修复：智能目录跳转逻辑
-    function jumpToChapter(href) {
-        // 1. 尝试使用 epub.js 内部索引查找 (最准)
+    // --- 4. 章节跳转 (修复匹配逻辑) ---
+    function jumpTo(href) {
+        // 核心修复：优先使用 spine.get 查找
         var target = book.spine.get(href);
-        var index = -1;
-
-        if (target) {
-            index = target.index;
+        if(target) {
+            log(`通过ID匹配到章节: Index ${target.index}`);
+            renderChapter(target.index);
         } else {
-            // 2. 失败则使用文件名模糊匹配 (保底)
-            // 解码并去掉锚点 (#target) 和路径 (Text/)
-            var cleanTarget = decodeURIComponent(href.split('#')[0]).split('/').pop();
-            
+            // 模糊匹配
+            var cleanHref = href.split('#')[0].split('/').pop();
+            log(`尝试模糊匹配文件名: ${cleanHref}`);
+            var found = -1;
             for(var i=0; i<spine.length; i++) {
-                var cleanSpine = decodeURIComponent(spine[i].href).split('/').pop();
-                if(cleanSpine === cleanTarget) {
-                    index = i;
-                    break;
+                if(spine[i].href.includes(cleanHref)) {
+                    found = i; break;
                 }
             }
-        }
-
-        if (index !== -1) {
-            // 计算这个章节在哪个批次 (BATCH)
-            var batchStart = Math.floor(index / BATCH) * BATCH;
-            // 渲染并要求滚动到特定章节
-            render(batchStart, index); 
-        } else {
-            alert("未找到该章节数据");
+            if(found !== -1) renderChapter(found);
+            else log("未找到对应章节", 'error');
         }
     }
 
-    // 渲染逻辑 (支持定位)
-    async function render(startIdx, scrollTargetIdx = null) {
-        document.getElementById('loading').style.display = 'block';
-        var viewer = document.getElementById('viewer');
-        viewer.innerHTML = '';
-        currentStart = startIdx;
-        localStorage.setItem('idx', startIdx);
+    // --- 5. 渲染核心 (防白屏版) ---
+    function renderChapter(index) {
+        var v = document.getElementById('viewer');
+        v.innerHTML = '<div style="text-align:center; color:#999;">正在加载章节...</div>';
+        currentIdx = index;
         
-        var endIdx = Math.min(startIdx + BATCH, spine.length);
-        document.getElementById('page-info').innerText = `正在阅读: ${startIdx+1} - ${endIdx} / 共 ${spine.length} 章`;
-
-        for(let i = startIdx; i < endIdx; i++) {
-            try {
-                let section = document.createElement('div');
-                section.id = 'ch-' + i; // 给章节加ID方便跳转
-                
-                let item = spine.get(i);
-                let doc = await item.load(book.load.bind(book));
-                
-                // 清洗内容
-                let body = doc.body;
-                body.querySelectorAll('script,style,link').forEach(n=>n.remove());
-                
-                // 简单的标题提取优化
-                let html = body.innerHTML;
-                // 替换块级元素为换行，避免粘连
-                html = html.replace(/<\/(h[1-6]|p|div)>/gi, '\n').replace(/<br>/gi, '\n');
-                let textDiv = document.createElement('div');
-                textDiv.innerHTML = html;
-                let cleanText = textDiv.innerText;
-                
-                let lines = cleanText.split('\n').map(l=>l.trim()).filter(l=>l);
-                
-                // 简单的重建DOM
-                if(lines.length > 0) {
-                    let h2 = document.createElement('h2');
-                    h2.innerText = lines[0]; // 假设第一行是标题
-                    section.appendChild(h2);
-                    
-                    for(let j=1; j<lines.length; j++) {
-                        let p = document.createElement('p');
-                        p.innerText = lines[j];
-                        section.appendChild(p);
-                    }
-                } else {
-                    // 如果提取失败，直接放原文（保底）
-                    section.innerHTML = body.innerHTML;
-                }
-
-                viewer.appendChild(section);
-
-            } catch(e) { console.error(e); }
+        log(`正在渲染第 ${index} 章...`);
+        
+        var section = spine[index];
+        if(!section) {
+            log("章节不存在", 'error');
+            return;
         }
 
-        document.getElementById('loading').style.display = 'none';
+        section.load(book.load.bind(book)).then(function(doc){
+            log("章节内容下载完毕，正在处理...");
+            
+            // 简单粗暴的处理：直接拿 body 内容，不要做复杂的拆分
+            // 这样最不容易出错
+            var body = doc.body;
+            
+            // 移除原本的脚本防止报错
+            var scripts = body.getElementsByTagName('script');
+            while(scripts[0]) scripts[0].parentNode.removeChild(scripts[0]);
 
-        // 🔴 滚动定位逻辑
-        if (scrollTargetIdx !== null) {
-            setTimeout(() => {
-                var targetEl = document.getElementById('ch-' + scrollTargetIdx);
-                if(targetEl) {
-                    targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    targetEl.classList.add('active-chapter'); // 高亮一下
-                }
-            }, 300); // 稍微延迟等待DOM渲染
-        } else {
+            // 赋值
+            v.innerHTML = ""; // 清空
+            
+            // 创建一个容器，注入HTML
+            var content = document.createElement('div');
+            content.innerHTML = body.innerHTML;
+            v.appendChild(content);
+            
+            // 自动回到顶部
             window.scrollTo(0, 0);
-        }
+            log("渲染完成！");
+            
+        }).catch(function(err){
+            log(`渲染渲染失败: ${err}`, 'error');
+            v.innerHTML = `<p style="color:red">加载此章节失败，请尝试下一章。<br>错误信息: ${err}</p>`;
+        });
     }
 
-    document.getElementById('prev-btn').onclick = () => {
-        if(currentStart - BATCH >= 0) render(currentStart - BATCH);
-    };
-    document.getElementById('next-btn').onclick = () => {
-        if(currentStart + BATCH < spine.length) render(currentStart + BATCH);
-    };
+    function changePage(dir) {
+        var next = currentIdx + dir;
+        if(next >= 0 && next < spine.length) {
+            renderChapter(next);
+        }
+    }
 
 </script>
 </body>
