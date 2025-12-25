@@ -48,7 +48,7 @@
         
         h2 { color: var(--h2-color); font-weight: 900; font-size: 1.8em; margin-top: 40px; margin-bottom: 30px; line-height: 1.4; }
         
-        /* 🚀 修改点1：添加 text-indent: 2em 实现首行缩进 */
+        /* ✅ 修改点1：添加 text-indent: 2em，解决缩进问题 */
         p { margin-bottom: 24px; text-align: justify; outline: none; font-size: 22px; font-weight: normal; line-height: 1.8; text-indent: 2em; }
         
         .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), var(--divider), rgba(0, 0, 0, 0)); margin-top: 50px; margin-bottom: 50px; }
@@ -160,9 +160,6 @@
                     let titleBuffer = ""; 
                     let titleIndex = -1;
                     let hasShownMainTitle = false; 
-                    
-                    // 🚀 修改点2：新增变量，记录上一个渲染的标题文本
-                    let lastHeadingText = "";
 
                     let cleanParas = paragraphs.map(p => p.replace(/[\u00a0\u200b\u3000]/g, ' ').trim())
                                                .filter(p => p.length > 0 && !JUNK_REGEX.test(p));
@@ -186,27 +183,22 @@
                                 titleBuffer += splitTitle;
                                 let h2 = document.createElement('h2'); h2.innerText = titleBuffer; h2.setAttribute('data-index', i);
                                 chapterSection.appendChild(h2);
-                                
-                                lastHeadingText = titleBuffer; // 📝 记录标题
-
                                 let p = document.createElement('p'); p.innerText = splitBody; chapterSection.appendChild(p);
                                 hasShownMainTitle = true; titleBuffer = ""; return; 
                             } 
                             else if (hasKeyword || (titleBuffer !== "" && isShortLine)) {
-                                if (titleBuffer !== "") titleBuffer += " "; titleBuffer += pText;
+                                // ✅ 修改点2：如果标题缓存中已经包含了这段文字，就不要重复添加了
+                                if (titleBuffer.indexOf(pText) !== -1) return;
+
+                                if (titleBuffer !== "") titleBuffer += " "; 
+                                titleBuffer += pText;
                                 if (titleIndex === -1) titleIndex = i; return; 
                             }
                         }
                         if (titleBuffer !== "") {
                             let h2 = document.createElement('h2'); h2.innerText = titleBuffer; h2.setAttribute('data-index', titleIndex);
-                            chapterSection.appendChild(h2);
-                            lastHeadingText = titleBuffer; // 📝 记录标题
-                            titleBuffer = ""; hasShownMainTitle = true;
+                            chapterSection.appendChild(h2); titleBuffer = ""; hasShownMainTitle = true;
                         }
-                        
-                        // 🚀 修改点2续：物理去重，如果段落内容与标题完全一致，跳过渲染
-                        if (pText === lastHeadingText) return;
-
                         let el = document.createElement('p'); el.innerText = pText;
                         if (titleIndex === -1 && !hasShownMainTitle) { el.setAttribute('data-index', i); titleIndex = -2; }
                         chapterSection.appendChild(el);
