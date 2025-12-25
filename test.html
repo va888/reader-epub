@@ -3,210 +3,275 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>EPUB 竖屏阅读器</title>
+    <title>EPUB纯净版阅读器</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        /* 🎨 1. 配色更新：吸取自你提供的截图 */
+        /* 🎨 核心视觉变量系统：日间原色，夜间极客黑 */
         :root {
-            --bg: #F0F0F0;  /* 截图中的浅灰色 */
-            --text: #333333; /* 深灰文字，对比度舒适 */
-            --border: #dcdcdc;
+            --bg: #FAF6EF; 
+            --text: #333; 
+            --h2-color: #000; 
+            --border: #e0e0e0; 
+            --toc-bg: #fdfbf7;
+            --divider: rgba(0, 0, 0, 0.1);
         }
 
-        /* 依然保留暗黑模式支持 */
+        /* 🌙 极客级系统自动感光 */
         @media (prefers-color-scheme: dark) {
             :root {
                 --bg: #1A1A1A; 
                 --text: #F0F0F0; 
+                --h2-color: #FFFFFF; 
                 --border: #333333; 
+                --toc-bg: #222222;
+                --divider: rgba(255, 255, 255, 0.1);
             }
         }
 
         body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
             margin: 0; padding: 0; 
-            height: 100vh; width: 100vw; 
-            overflow: hidden; 
-            display: flex; flex-direction: column;
             background-color: var(--bg); 
-            color: var(--text);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            transition: background-color 0.5s, color 0.5s;
+            color: var(--text); 
+            padding-bottom: 120px; padding-top: 60px; 
+            transition: background-color 0.5s ease, color 0.5s ease; /* 丝滑切换动效 */
         }
 
-        .header { 
-            height: 50px; flex-shrink: 0; 
-            background: var(--bg); border-bottom: 1px solid var(--border); 
-            display: flex; align-items: center; padding: 0 15px; 
-            z-index: 10;
-        }
-
-        .footer { 
-            height: 40px; flex-shrink: 0; 
-            background: var(--bg); border-top: 1px solid var(--border); 
-            display: flex; justify-content: center; align-items: center; 
-            z-index: 10; font-size: 13px; opacity: 0.8; font-weight: bold;
-        }
-
-        #viewer { 
-            flex-grow: 1; 
-            width: 100%; 
-            overflow-y: auto; 
-            -webkit-overflow-scrolling: touch;
-        }
-
-        select#toc-select { 
-            max-width: 200px; padding: 6px; border-radius: 4px; 
-            border: 1px solid var(--border); 
-            background: rgba(255,255,255,0.5); color: var(--text);
-            font-size: 16px;
-        }
+        .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; z-index: 100; transition: background 0.5s ease; }
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 110px; background: var(--bg); box-shadow: 0 -5px 20px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; transition: background 0.5s ease; }
+        .ver-tag { position: absolute; top: 5px; left: 5px; font-size: 10px; color: purple; font-weight: bold; z-index: 101; background: rgba(243, 229, 245, 0.5); padding: 2px 4px; border-radius: 4px; opacity: 0.6; }
+        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--toc-bg); padding-left: 10px; -webkit-appearance: none; color: var(--text); }
         
-        .upload-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: var(--bg); z-index: 100;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-        }
-        .big-btn { padding: 15px 30px; font-size: 18px; border-radius: 8px; border: none; cursor: pointer; color: white; margin-top: 20px;}
-        .btn-blue { background: #3498db; }
-        .btn-green { background: #27ae60; }
-
-        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 15px 25px; border-radius: 8px; z-index: 200; display: none; }
+        article#viewer { background: var(--bg); padding: 20px 20px; min-height: 80vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; display: block; transition: background 0.5s ease; }
+        
+        h2 { color: var(--h2-color); font-weight: 900; font-size: 1.8em; margin-top: 40px; margin-bottom: 30px; line-height: 1.4; }
+        p { margin-bottom: 24px; text-align: justify; outline: none; font-size: 22px; font-weight: normal; line-height: 1.8; }
+        
+        .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), var(--divider), rgba(0, 0, 0, 0)); margin-top: 50px; margin-bottom: 50px; }
+        @keyframes flash { 0% { background-color: #ffe69c; } 100% { background-color: transparent; } }
+        .highlight-target { animation: flash 2s ease-out; }
+        .control-group { display: flex; width: 90%; justify-content: space-between; align-items: center; }
+        .nav-btn { width: 48%; height: 55px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; color: white; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        #prev-btn { background-color: #bdc3c7; color: #555; } 
+        #next-btn { background-color: #3498db; }
+        .upload-container { padding: 40px 20px; text-align: center; margin-top: 40px; }
+        #resume-btn { display: none; width: 80%; padding: 15px; margin: 0 auto 20px auto; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; }
+        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 200; }
     </style>
 </head>
 <body>
-
     <header class="header">
-        <select id="toc-select"><option>加载中...</option></select>
+        <div class="ver-tag"></div>
+        <select id="toc-select" disabled><option></option></select>
     </header>
 
-    <div id="viewer"></div>
-
-    <footer class="footer">
-        <div id="progress-info">阅读进度: 0%</div>
-    </footer>
-
-    <div class="upload-overlay" id="upload-area">
-        <h2 style="color:var(--text);">EPUB 阅读器</h2>
-        <button class="big-btn btn-green" id="resume-btn" style="display:none;">🔄 继续上次阅读</button>
-        <label class="big-btn btn-blue" style="display:flex; align-items:center;">
-            📂 选择文件
+    <div class="upload-container" id="upload-area">
+        <h2>EPUB纯净版阅读器</h2>
+        <button id="resume-btn">🔄 继续阅读</button>
+        <div style="margin-top: 20px;">
+            <label for="file-input" style="color: #3498db; cursor: pointer;">📂 打开书籍</label>
             <input type="file" id="file-input" style="display: none;">
-        </label>
+        </div>
     </div>
 
-    <div id="loading">排版处理中...</div>
+    <article id="viewer"></article>
+
+    <footer class="footer">
+        <div id="page-info" style="font-size:12px; color:#999; margin-bottom:8px;"></div>
+        <div class="control-group">
+            <button id="prev-btn" class="nav-btn" disabled>上一组</button>
+            <button id="next-btn" class="nav-btn" disabled>下一组</button>
+        </div>
+    </footer>
+    <div id="loading">处理中...</div>
 
     <script>
-        var book = null;
-        var rendition = null;
-        localforage.config({ name: 'epub_scroll_db' });
+        var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 10;
+        var TITLE_KEYWORDS = ["第", "章", "Chapter", "序", "前言", "Prologue", "Introduction", "卷", "部", "节", "Part"];
+        // 增加对纯数字行的容错，避免删除年份或特定数值
+        var JUNK_REGEX = /^(cover|unknown|未知|封面|title page|copyright|content|目录|前言|author|book|page)$/i; 
 
-        function getThemeColors() {
-            const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-            return {
-                // 👇 这里对应上面的 CSS 变量，确保书本内部颜色一致
-                bg: isDark ? '#1A1A1A' : '#F0F0F0', 
-                text: isDark ? '#F0F0F0' : '#333333'
-            };
-        }
+        localforage.config({ name: 'listenflow_db' });
 
-        window.onload = async function() {
+        window.onload = function() { checkSavedBook(); };
+        async function checkSavedBook() {
             var savedBook = await localforage.getItem('currentBook');
             if (savedBook) {
-                var btn = document.getElementById('resume-btn');
-                btn.style.display = 'block';
-                btn.onclick = function() { loadBook(savedBook); };
+                var btn = document.getElementById('resume-btn'); btn.style.display = 'block';
+                btn.onclick = function() { loadBookEngine(savedBook, true); };
             }
-        };
-
+        }
         document.getElementById('file-input').onchange = function(e) {
             var file = e.target.files[0]; if (!file) return;
-            localforage.setItem('currentBook', file).then(() => loadBook(file));
+            localforage.setItem('currentBook', file).then(() => loadBookEngine(file, false));
         };
 
-        function loadBook(bookData) {
-            document.getElementById('upload-area').style.display = 'none';
+        function loadBookEngine(data, isResume) {
             document.getElementById('loading').style.display = 'block';
-
             var reader = new FileReader();
             reader.onload = function(e) {
                 book = ePub(e.target.result);
-                
-                rendition = book.renderTo("viewer", {
-                    width: "100%",
-                    height: "100%",
-                    flow: "scrolled",
-                    manager: "continuous"
-                });
-
-                // --- 样式注入核心 ---
-                var colors = getThemeColors();
-                rendition.themes.register("user-theme", {
-                    "body": { 
-                        "background-color": `${colors.bg} !important`, 
-                        "color": `${colors.text} !important`,
-                        "font-family": "sans-serif !important",
-                        
-                        /* 👇 字体大小调整：从 125% 增加到 150%，相当于加大了两号 */
-                        "font-size": "150% !important",  
-                        
-                        "line-height": "1.8 !important",
-                        "padding": "10px 15px !important"
-                    },
-                    "p": {
-                        "font-size": "1em !important",
-                        "line-height": "1.8 !important"
-                    },
-                    "img": {
-                        "max-width": "100% !important"
-                    }
-                });
-
-                var savedCfi = localStorage.getItem('currentCfi_scroll');
-                var displayPromise = savedCfi ? rendition.display(savedCfi) : rendition.display();
-
-                displayPromise.then(() => {
-                    rendition.themes.select("user-theme"); 
-                    document.getElementById('loading').style.display = 'none';
-                    initToc();
-                });
-
-                rendition.on("relocated", function(location) {
-                    localStorage.setItem('currentCfi_scroll', location.start.cfi);
-                    if(book.locations.length() > 0) {
-                        var percentage = Math.floor(location.start.percentage * 100);
-                        document.getElementById('progress-info').innerText = `阅读进度: ${percentage}%`;
-                    } else {
-                        document.getElementById('progress-info').innerText = `当前位置: 章节 ${location.start.index}`;
-                    }
-                });
-                
-                book.ready.then(() => book.locations.generate(1000)); 
-            };
-            reader.readAsArrayBuffer(bookData);
-        }
-
-        function initToc() {
-            book.loaded.navigation.then(function(toc) {
-                var select = document.getElementById('toc-select');
-                select.innerHTML = '<option value="">📖 跳转目录...</option>';
-                var flatten = function(items, level) {
-                    items.forEach(function(item) {
-                        var option = document.createElement('option');
-                        option.innerHTML = "&nbsp;".repeat(level * 4) + item.label.trim();
-                        option.value = item.href;
-                        select.add(option);
-                        if (item.subitems) flatten(item.subitems, level + 1);
+                book.loaded.spine.then(function(s) {
+                    spine = s;
+                    book.loaded.navigation.then(function(toc) {
+                        var select = document.getElementById('toc-select');
+                        select.innerHTML = '<option value="-1">📖 跳转目录...</option>';
+                        var flatten = function(items) {
+                            items.forEach(function(item) {
+                                var option = document.createElement('option');
+                                option.text = item.label.trim(); 
+                                // 使用 encodeURIComponent 防止 href 中的特殊字符破坏 value 结构
+                                option.value = encodeURIComponent(item.href) + "|" + item.label.trim();
+                                select.add(option); if (item.subitems) flatten(item.subitems);
+                            });
+                        };
+                        flatten(toc.toc); select.disabled = false;
+                        select.onchange = function() {
+                            if(this.value !== "-1") { 
+                                var parts = this.value.split('|'); 
+                                loadChapterByMatch(decodeURIComponent(parts[0]), parts[1]); 
+                            }
+                        };
                     });
-                };
-                flatten(toc.toc, 0);
-                select.onchange = function() {
-                    if (this.value) rendition.display(this.value);
-                };
-            });
+                    document.getElementById('upload-area').style.display = 'none';
+                    document.getElementById('prev-btn').disabled = document.getElementById('next-btn').disabled = false;
+                    var startIdx = isResume ? (Math.floor(parseInt(localStorage.getItem('exactChapterIndex') || 0) / BATCH_SIZE) * BATCH_SIZE) : 0;
+                    renderBatch(startIdx, isResume ? parseInt(localStorage.getItem('exactChapterIndex')) : null);
+                });
+            }; reader.readAsArrayBuffer(data);
         }
+
+        async function renderBatch(startIndex, targetScrollIndex = null) {
+            var viewer = document.getElementById('viewer'); viewer.innerHTML = '';
+            currentStartIndex = startIndex;
+            var endIndex = Math.min(startIndex + BATCH_SIZE, spine.length);
+            document.getElementById('page-info').innerText = `第 ${startIndex + 1} - ${endIndex} 章`;
+            
+            for (let i = startIndex; i < endIndex; i++) {
+                try {
+                    let section = spine.get(i);
+                    let doc = await section.load(book.load.bind(book));
+                    // 移除干扰元素
+                    doc.querySelectorAll('style, script, link, meta').forEach(item => item.remove());
+                    let text = doc.body ? doc.body.innerText : (doc.textContent || "");
+                    let paragraphs = text.split(/\n+/);
+                    
+                    let chapterSection = document.createElement('section'); 
+                    chapterSection.id = 'chapter-' + i;
+                    if (i > startIndex) { let hr = document.createElement('hr'); hr.className = 'chapter-divider'; chapterSection.appendChild(hr); }
+                    
+                    let titleBuffer = ""; 
+                    let titleIndex = -1;
+                    let hasShownMainTitle = false; 
+
+                    let cleanParas = paragraphs.map(p => p.replace(/[\u00a0\u200b\u3000]/g, ' ').trim())
+                                               .filter(p => p.length > 0 && !JUNK_REGEX.test(p));
+
+                    cleanParas.forEach(function(pText, idx) {
+                        var hasKeyword = TITLE_KEYWORDS.some(k => pText.includes(k));
+                        
+                        // [逻辑修复] 删除了原有的 if (!hasShownMainTitle ... idx < 5) return; 
+                        // 这是一个危险逻辑，会导致没有标准标题的章节开头内容丢失。
+                        
+                        // 增强短行判断：除了长度，还得看标点，避免将对话合并到标题
+                        var isShortLine = pText.length < 50 && !/[。.!！?？”"：:]$/.test(pText);
+                        
+                        let splitTitle = null, splitBody = null;
+                        
+                        // 尝试处理 "第1章 标题" 后面紧跟正文在同一行的情况
+                        if (hasKeyword && pText.length >= 50) {
+                            let splitIdx = pText.indexOf(' ');
+                            // 限制分割点位置，避免误切长句
+                            if (splitIdx > 0 && splitIdx < 30) {
+                                splitTitle = pText.substring(0, splitIdx);
+                                splitBody = pText.substring(splitIdx + 1);
+                                isShortLine = true; 
+                            }
+                        }
+
+                        // 前几行尝试合并标题
+                        if (idx < 10 && !hasShownMainTitle) {
+                            if (splitTitle) {
+                                if (titleBuffer !== "") titleBuffer += " ";
+                                titleBuffer += splitTitle;
+                                let h2 = document.createElement('h2'); h2.innerText = titleBuffer; h2.setAttribute('data-index', i);
+                                chapterSection.appendChild(h2);
+                                
+                                let p = document.createElement('p'); p.innerText = splitBody; chapterSection.appendChild(p);
+                                hasShownMainTitle = true; titleBuffer = ""; return; 
+                            } 
+                            else if (hasKeyword || (titleBuffer !== "" && isShortLine)) {
+                                if (titleBuffer !== "") titleBuffer += " "; titleBuffer += pText;
+                                if (titleIndex === -1) titleIndex = i; return; 
+                            }
+                        }
+
+                        // 遇到正文，如果缓存区有标题，先渲染标题
+                        if (titleBuffer !== "") {
+                            let h2 = document.createElement('h2'); h2.innerText = titleBuffer; h2.setAttribute('data-index', titleIndex);
+                            chapterSection.appendChild(h2); titleBuffer = ""; hasShownMainTitle = true;
+                        }
+
+                        // 渲染普通段落
+                        let el = document.createElement('p'); el.innerText = pText;
+                        // 如果这一章完全没有检测到标题，给第一段打上索引标记，方便跳转
+                        if (titleIndex === -1 && !hasShownMainTitle && idx === 0) { 
+                            el.setAttribute('data-index', i); 
+                            titleIndex = -2; // 标记已处理
+                        }
+                        chapterSection.appendChild(el);
+                    });
+
+                    // 循环结束后，如果还有遗留的标题缓存
+                    if (titleBuffer !== "") {
+                        let h2 = document.createElement('h2'); h2.innerText = titleBuffer; h2.setAttribute('data-index', titleIndex);
+                        chapterSection.appendChild(h2);
+                    }
+                    if (chapterSection.hasChildNodes()) viewer.appendChild(chapterSection);
+                } catch (e) {
+                    console.error("Chapter render error:", e);
+                }
+            }
+            document.getElementById('loading').style.display = 'none';
+            
+            // 跳转处理
+            if (targetScrollIndex !== null) {
+                setTimeout(() => {
+                    var target = document.querySelector(`[data-index='${targetScrollIndex}']`);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'auto', block: 'start' }); 
+                        // 增加偏移量，防止被 fixed header 遮挡
+                        window.scrollBy(0, -70); 
+                        target.classList.add('highlight-target');
+                        target.setAttribute('tabindex', '-1'); target.focus();
+                        try {
+                            const range = document.createRange(); const sel = window.getSelection();
+                            range.selectNodeContents(target); sel.removeAllRanges(); sel.addRange(range);
+                        } catch(err) {}
+                    }
+                }, 250);
+            }
+        }
+
+        function loadChapterByMatch(href, label) {
+            var targetIndex = -1; var spineItem = book.spine.get(href);
+            if (spineItem) { targetIndex = spineItem.index; } 
+            else {
+                // 兼容处理：尝试匹配文件名
+                var targetName = href.split('#')[0].split('/').pop();
+                for(var i=0; i<spine.length; i++) {
+                    if (decodeURIComponent(spine[i].href).indexOf(targetName) !== -1) { targetIndex = i; break; }
+                }
+            }
+            if(targetIndex !== -1) {
+                localStorage.setItem('exactChapterIndex', targetIndex);
+                renderBatch(Math.floor(targetIndex / BATCH_SIZE) * BATCH_SIZE, targetIndex);
+            }
+        }
+        document.getElementById('prev-btn').onclick = function() { if (currentStartIndex >= BATCH_SIZE) renderBatch(currentStartIndex - BATCH_SIZE); };
+        document.getElementById('next-btn').onclick = function() { if (currentStartIndex + BATCH_SIZE < spine.length) renderBatch(currentStartIndex + BATCH_SIZE); };
     </script>
 </body>
 </html>
