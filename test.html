@@ -35,23 +35,21 @@
             margin: 0; padding: 0; 
             background-color: var(--bg); 
             color: var(--text); 
-            /* [调整] 底部留白减少，适配变小的 Footer */
             padding-bottom: 90px; padding-top: 60px; 
             transition: background-color 0.5s ease, color 0.5s ease;
         }
 
         .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; z-index: 100; transition: background 0.5s ease; }
         
-        /* [调整] Footer 高度从 110px 减小到 80px，并增加安全区域适配 */
         .footer { 
             position: fixed; bottom: 0; left: 0; right: 0; 
-            height: 80px; /* 变矮 */
+            height: 80px; 
             background: var(--bg); 
             box-shadow: 0 -5px 20px rgba(0,0,0,0.05); 
             display: flex; justify-content: center; align-items: center; 
             z-index: 100; flex-direction: column; 
             transition: background 0.5s ease; 
-            padding-bottom: env(safe-area-inset-bottom); /* 适配 iPhone 底部黑条 */
+            padding-bottom: env(safe-area-inset-bottom);
         }
 
         .ver-tag { position: absolute; top: 5px; left: 5px; font-size: 10px; color: purple; font-weight: bold; z-index: 101; background: rgba(243, 229, 245, 0.5); padding: 2px 4px; border-radius: 4px; opacity: 0.6; }
@@ -60,19 +58,28 @@
         article#viewer { background: var(--bg); padding: 20px 20px; min-height: 80vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; display: block; transition: background 0.5s ease; }
         
         h2 { color: var(--h2-color); font-weight: 900; font-size: 1.8em; margin-top: 40px; margin-bottom: 30px; line-height: 1.4; }
-        p { margin-bottom: 24px; text-align: justify; outline: none; font-size: 22px; font-weight: normal; line-height: 1.8; }
+        
+        /* [调整] 增加 text-indent: 2em 实现首行缩进两个字符 */
+        p { 
+            margin-bottom: 24px; 
+            text-align: justify; 
+            text-indent: 2em; /* 中文排版标准缩进 */
+            outline: none; 
+            font-size: 22px; 
+            font-weight: normal; 
+            line-height: 1.8; 
+        }
         
         .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), var(--divider), rgba(0, 0, 0, 0)); margin-top: 50px; margin-bottom: 50px; }
         @keyframes flash { 0% { background-color: #ffe69c; } 100% { background-color: transparent; } }
         .highlight-target { animation: flash 2s ease-out; }
         .control-group { display: flex; width: 90%; justify-content: space-between; align-items: center; }
         
-        /* [调整] 按钮高度从 55px 减小到 42px，字体从 18px 减小到 16px */
         .nav-btn { 
             width: 48%; 
-            height: 42px; /* 变瘦 */
-            border: none; border-radius: 10px; /* 圆角微调 */
-            font-size: 16px; /* 字体微调 */
+            height: 42px; 
+            border: none; border-radius: 10px; 
+            font-size: 16px; 
             font-weight: bold; color: white; cursor: pointer; 
             box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
         }
