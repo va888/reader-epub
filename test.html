@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
+        /* 🎨 核心视觉变量系统：日间原色，夜间极客黑 */
         :root {
             --bg: #FAF6EF; 
             --text: #333; 
@@ -17,6 +18,7 @@
             --divider: rgba(0, 0, 0, 0.1);
         }
 
+        /* 🌙 极客级系统自动感光 */
         @media (prefers-color-scheme: dark) {
             :root {
                 --bg: #1A1A1A; 
@@ -29,46 +31,25 @@
         }
 
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
             margin: 0; padding: 0; 
             background-color: var(--bg); 
             color: var(--text); 
             padding-bottom: 120px; padding-top: 60px; 
-            transition: background-color 0.5s ease, color 0.5s ease; 
+            transition: background-color 0.5s ease, color 0.5s ease; /* 丝滑切换动效 */
         }
 
         .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; z-index: 100; transition: background 0.5s ease; }
         .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 110px; background: var(--bg); box-shadow: 0 -5px 20px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; transition: background 0.5s ease; }
         .ver-tag { position: absolute; top: 5px; left: 5px; font-size: 10px; color: purple; font-weight: bold; z-index: 101; background: rgba(243, 229, 245, 0.5); padding: 2px 4px; border-radius: 4px; opacity: 0.6; }
-        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--toc-bg); padding-left: 10px; -webkit-appearance: none; color: var(--text); outline: none;}
+        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--toc-bg); padding-left: 10px; -webkit-appearance: none; color: var(--text); }
         
         article#viewer { background: var(--bg); padding: 20px 20px; min-height: 80vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; display: block; transition: background 0.5s ease; }
         
-        /* --- 修复样式重点 --- */
+        h2 { color: var(--h2-color); font-weight: 900; font-size: 1.8em; margin-top: 40px; margin-bottom: 30px; line-height: 1.4; }
         
-        /* 1. 标题分离并居中 */
-        h2 { 
-            color: var(--h2-color); 
-            font-weight: 900; 
-            font-size: 1.6em; 
-            margin-top: 60px; 
-            margin-bottom: 40px; 
-            line-height: 1.4; 
-            text-align: center; /* 居中 */
-            text-indent: 0 !important; /* 标题不缩进 */
-        }
-
-        /* 2. 正文首行缩进 */
-        p { 
-            margin-bottom: 24px; 
-            text-align: justify; 
-            outline: none; 
-            font-size: 20px; 
-            font-weight: normal; 
-            line-height: 1.8;
-            text-indent: 2em; /* 关键：强制首行缩进两个字 */
-            margin-top: 0;
-        }
+        /* 👇 修改处：增加了 text-indent: 2em 实现首行缩进 */
+        p { text-indent: 2em; margin-bottom: 24px; text-align: justify; outline: none; font-size: 22px; font-weight: normal; line-height: 1.8; }
         
         .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), var(--divider), rgba(0, 0, 0, 0)); margin-top: 50px; margin-bottom: 50px; }
         @keyframes flash { 0% { background-color: #ffe69c; } 100% { background-color: transparent; } }
@@ -84,7 +65,7 @@
 </head>
 <body>
     <header class="header">
-        <div class="ver-tag">Fixed</div>
+        <div class="ver-tag"></div>
         <select id="toc-select" disabled><option></option></select>
     </header>
 
@@ -110,7 +91,7 @@
 
     <script>
         var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 10;
-        // 原本的JUNK_REGEX保留，用于过滤页码等垃圾信息
+        var TITLE_KEYWORDS = ["第", "章", "Chapter", "序", "前言", "Prologue", "Introduction", "卷", "部", "节", "Part"];
         var JUNK_REGEX = /^(cover|unknown|未知|封面|title page|copyright|content|目录|前言|author|book|page|\d+$)/i;
 
         localforage.config({ name: 'listenflow_db' });
@@ -158,7 +139,6 @@
             }; reader.readAsArrayBuffer(data);
         }
 
-        // --- 核心修改：优化的渲染逻辑 ---
         async function renderBatch(startIndex, targetScrollIndex = null) {
             var viewer = document.getElementById('viewer'); viewer.innerHTML = '';
             currentStartIndex = startIndex;
@@ -169,79 +149,75 @@
                 try {
                     let section = spine.get(i);
                     let doc = await section.load(book.load.bind(book));
-                    // 移除样式干扰
                     doc.querySelectorAll('style, script, link, meta').forEach(item => item.remove());
+                    let text = doc.body ? doc.body.innerText : (doc.textContent || "");
+                    let paragraphs = text.split(/\n+/);
                     
-                    // 1. 获取内容，先替换块级元素为换行符，确保标题和正文不粘连
-                    let html = doc.body.innerHTML;
-                    html = html.replace(/<\/(h[1-6]|p|div|li|blockquote)>/gi, '\n');
-                    html = html.replace(/<br\s*\/?>/gi, '\n');
-                    let tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = html;
-                    let text = tempDiv.innerText;
-
-                    // 2. 分割行，并过滤空白行和垃圾行
-                    let lines = text.split(/\n+/).map(l => l.trim()).filter(l => l.length > 0 && !JUNK_REGEX.test(l));
-
                     let chapterSection = document.createElement('section'); 
                     chapterSection.id = 'chapter-' + i;
                     if (i > startIndex) { let hr = document.createElement('hr'); hr.className = 'chapter-divider'; chapterSection.appendChild(hr); }
+                    
+                    let titleBuffer = ""; 
+                    let titleIndex = -1;
+                    let hasShownMainTitle = false; 
 
-                    // 3. 智能构建 (修复标题重复和格式问题)
-                    let titleRendered = false;
+                    let cleanParas = paragraphs.map(p => p.replace(/[\u00a0\u200b\u3000]/g, ' ').trim())
+                                               .filter(p => p.length > 0 && !JUNK_REGEX.test(p));
 
-                    lines.forEach((line, idx) => {
-                        // 判定标题：如果是第一行，且长度适中，认为是标题
-                        // 或者前3行内包含"第X章"之类的关键词
-                        let isTitle = false;
-                        if (!titleRendered && idx < 3) {
-                            if (line.length < 50 || /第.+[章节]/.test(line)) {
-                                isTitle = true;
+                    cleanParas.forEach(function(pText, idx) {
+                        var hasKeyword = TITLE_KEYWORDS.some(k => pText.includes(k));
+                        if (!hasShownMainTitle && titleBuffer === "" && !hasKeyword) { if (idx < 5) return; }
+                        var isShortLine = pText.length < 50 && !/[。.!！?？”"]$/.test(pText);
+                        let splitTitle = null, splitBody = null;
+                        if (hasKeyword && pText.length >= 50) {
+                            let splitIdx = pText.indexOf(' ');
+                            if (splitIdx > 0 && splitIdx < 30) {
+                                splitTitle = pText.substring(0, splitIdx);
+                                splitBody = pText.substring(splitIdx + 1);
+                                isShortLine = true; 
                             }
                         }
-
-                        if (isTitle) {
-                            // --- 修复：去重逻辑 ---
-                            // 针对 "第25节 亲自掌舵 第25节" 这种情况
-                            // 检查开头是否在结尾重复
-                            if (line.length > 6) {
-                                let match = line.match(/^(.{2,10}).*\1$/); // 匹配开头结尾重复
-                                if (match) {
-                                    // 去掉结尾的重复部分
-                                    line = line.substring(0, line.lastIndexOf(match[1])).trim();
-                                }
+                        if (idx < 10 && !hasShownMainTitle) {
+                            if (splitTitle) {
+                                if (titleBuffer !== "") titleBuffer += " ";
+                                titleBuffer += splitTitle;
+                                let h2 = document.createElement('h2'); h2.innerText = titleBuffer; h2.setAttribute('data-index', i);
+                                chapterSection.appendChild(h2);
+                                let p = document.createElement('p'); p.innerText = splitBody; chapterSection.appendChild(p);
+                                hasShownMainTitle = true; titleBuffer = ""; return; 
+                            } 
+                            else if (hasKeyword || (titleBuffer !== "" && isShortLine)) {
+                                if (titleBuffer !== "") titleBuffer += " "; titleBuffer += pText;
+                                if (titleIndex === -1) titleIndex = i; return; 
                             }
-                            
-                            let h2 = document.createElement('h2');
-                            h2.innerText = line;
-                            h2.setAttribute('data-index', i); // 锚点标记在标题上
-                            chapterSection.appendChild(h2);
-                            titleRendered = true;
-                        } else {
-                            // 正文
-                            let p = document.createElement('p');
-                            p.innerText = line;
-                            // 如果这章没标题，把锚点标记在第一段
-                            if (idx === 0 && !titleRendered) {
-                                p.setAttribute('data-index', i);
-                                titleRendered = true; // 防止重复标记
-                            }
-                            chapterSection.appendChild(p);
                         }
+                        if (titleBuffer !== "") {
+                            let h2 = document.createElement('h2'); h2.innerText = titleBuffer; h2.setAttribute('data-index', titleIndex);
+                            chapterSection.appendChild(h2); titleBuffer = ""; hasShownMainTitle = true;
+                        }
+                        let el = document.createElement('p'); el.innerText = pText;
+                        if (titleIndex === -1 && !hasShownMainTitle) { el.setAttribute('data-index', i); titleIndex = -2; }
+                        chapterSection.appendChild(el);
                     });
-
+                    if (titleBuffer !== "") {
+                        let h2 = document.createElement('h2'); h2.innerText = titleBuffer; h2.setAttribute('data-index', titleIndex);
+                        chapterSection.appendChild(h2);
+                    }
                     if (chapterSection.hasChildNodes()) viewer.appendChild(chapterSection);
-                } catch (e) { console.error(e); }
+                } catch (e) {}
             }
             document.getElementById('loading').style.display = 'none';
-            
-            // 自动滚动定位
             if (targetScrollIndex !== null) {
                 setTimeout(() => {
                     var target = document.querySelector(`[data-index='${targetScrollIndex}']`);
                     if (target) {
                         target.scrollIntoView({ behavior: 'auto', block: 'start' }); window.scrollBy(0, -70);
                         target.classList.add('highlight-target');
+                        target.setAttribute('tabindex', '-1'); target.focus();
+                        try {
+                            const range = document.createRange(); const sel = window.getSelection();
+                            range.selectNodeContents(target); sel.removeAllRanges(); sel.addRange(range);
+                        } catch(err) {}
                     }
                 }, 250);
             }
