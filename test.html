@@ -8,13 +8,14 @@
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        /* 🎨 1. 恢复你指定的配色系统 */
+        /* 🎨 1. 配色更新：吸取自你提供的截图 */
         :root {
-            --bg: #FAF6EF; 
-            --text: #333; 
-            --border: #e0e0e0;
+            --bg: #F0F0F0;  /* 截图中的浅灰色 */
+            --text: #333333; /* 深灰文字，对比度舒适 */
+            --border: #dcdcdc;
         }
 
+        /* 依然保留暗黑模式支持 */
         @media (prefers-color-scheme: dark) {
             :root {
                 --bg: #1A1A1A; 
@@ -41,26 +42,25 @@
             z-index: 10;
         }
 
-        /* 底部现在只用来显示进度，不需要翻页按钮了 */
         .footer { 
             height: 40px; flex-shrink: 0; 
             background: var(--bg); border-top: 1px solid var(--border); 
             display: flex; justify-content: center; align-items: center; 
-            z-index: 10; font-size: 12px; opacity: 0.8;
+            z-index: 10; font-size: 13px; opacity: 0.8; font-weight: bold;
         }
 
-        /* 2. 阅读区样式：允许滚动 */
         #viewer { 
             flex-grow: 1; 
             width: 100%; 
-            overflow-y: auto; /* 允许垂直滚动 */
+            overflow-y: auto; 
             -webkit-overflow-scrolling: touch;
         }
 
         select#toc-select { 
-            max-width: 200px; padding: 5px; border-radius: 4px; 
+            max-width: 200px; padding: 6px; border-radius: 4px; 
             border: 1px solid var(--border); 
-            background: rgba(255,255,255,0.1); color: var(--text);
+            background: rgba(255,255,255,0.5); color: var(--text);
+            font-size: 16px;
         }
         
         .upload-overlay {
@@ -88,7 +88,7 @@
     </footer>
 
     <div class="upload-overlay" id="upload-area">
-        <h2 style="color:var(--text);">EPUB 竖屏阅读器</h2>
+        <h2 style="color:var(--text);">EPUB 阅读器</h2>
         <button class="big-btn btn-green" id="resume-btn" style="display:none;">🔄 继续上次阅读</button>
         <label class="big-btn btn-blue" style="display:flex; align-items:center;">
             📂 选择文件
@@ -103,11 +103,11 @@
         var rendition = null;
         localforage.config({ name: 'epub_scroll_db' });
 
-        // 获取当前配色的 Hex 值，用于注入到 iframe 内部
         function getThemeColors() {
             const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
             return {
-                bg: isDark ? '#1A1A1A' : '#FAF6EF',
+                // 👇 这里对应上面的 CSS 变量，确保书本内部颜色一致
+                bg: isDark ? '#1A1A1A' : '#F0F0F0', 
                 text: isDark ? '#F0F0F0' : '#333333'
             };
         }
@@ -134,30 +134,33 @@
             reader.onload = function(e) {
                 book = ePub(e.target.result);
                 
-                // --- 核心修改：改为竖向滚动 (scrolled) ---
                 rendition = book.renderTo("viewer", {
                     width: "100%",
                     height: "100%",
-                    flow: "scrolled",       // 开启滚动模式
-                    manager: "continuous"   // 连续渲染章节
+                    flow: "scrolled",
+                    manager: "continuous"
                 });
 
-                // --- 3. 样式注入：修改背景色和字体大小 ---
+                // --- 样式注入核心 ---
                 var colors = getThemeColors();
                 rendition.themes.register("user-theme", {
                     "body": { 
                         "background-color": `${colors.bg} !important`, 
                         "color": `${colors.text} !important`,
                         "font-family": "sans-serif !important",
-                        "font-size": "125% !important",  /* 字体放大 */
+                        
+                        /* 👇 字体大小调整：从 125% 增加到 150%，相当于加大了两号 */
+                        "font-size": "150% !important",  
+                        
                         "line-height": "1.8 !important",
                         "padding": "10px 15px !important"
                     },
                     "p": {
-                        "font-size": "1em !important"
+                        "font-size": "1em !important",
+                        "line-height": "1.8 !important"
                     },
                     "img": {
-                        "max-width": "100% !important" /* 确保图片不撑破屏幕 */
+                        "max-width": "100% !important"
                     }
                 });
 
@@ -165,27 +168,22 @@
                 var displayPromise = savedCfi ? rendition.display(savedCfi) : rendition.display();
 
                 displayPromise.then(() => {
-                    rendition.themes.select("user-theme"); // 应用自定义样式
+                    rendition.themes.select("user-theme"); 
                     document.getElementById('loading').style.display = 'none';
                     initToc();
                 });
 
-                // 监听滚动位置保存
                 rendition.on("relocated", function(location) {
                     localStorage.setItem('currentCfi_scroll', location.start.cfi);
-                    // 计算粗略百分比
                     if(book.locations.length() > 0) {
                         var percentage = Math.floor(location.start.percentage * 100);
                         document.getElementById('progress-info').innerText = `阅读进度: ${percentage}%`;
                     } else {
-                        // 如果没有生成 location，先显示章节名
                         document.getElementById('progress-info').innerText = `当前位置: 章节 ${location.start.index}`;
                     }
                 });
                 
-                // 必须在加载后生成 location 才能计算百分比（耗时操作，后台进行）
                 book.ready.then(() => book.locations.generate(1000)); 
-
             };
             reader.readAsArrayBuffer(bookData);
         }
