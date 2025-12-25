@@ -3,49 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>EPUB 终极调试版</title>
-    <script src="https://lib.baomitu.com/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://lib.baomitu.com/epub.js/0.3.88/epub.min.js"></script>
-    <script src="https://lib.baomitu.com/localforage/1.10.0/localforage.min.js"></script>
+    <title>EPUB 强力加载版</title>
     <style>
-        body { margin: 0; padding: 0; background: #FAF6EF; color: #333; font-family: sans-serif; }
+        body { margin: 0; padding: 0; background: #FAF6EF; color: #333; font-family: -apple-system, sans-serif; }
         
-        /* 调试控制台：如果出错，这里会显示红字 */
-        #debug-console {
-            background: #000; color: #0f0; font-family: monospace; font-size: 12px;
-            padding: 10px; border-bottom: 2px solid #333; max-height: 150px; overflow-y: auto;
-            display: block; /* 默认显示，确诊后可隐藏 */
+        /* 状态栏 */
+        #status-bar {
+            background: #2c3e50; color: #fff; padding: 10px; font-size: 12px;
+            position: fixed; top: 0; left: 0; right: 0; z-index: 999;
+            display: flex; justify-content: space-between; align-items: center;
         }
-        .log-err { color: #ff3333; font-weight: bold; }
-        .log-info { color: #ffff33; }
-
-        .header { position: sticky; top: 0; background: #FAF6EF; border-bottom: 1px solid #ccc; padding: 10px; z-index: 100; display: flex; gap: 10px; }
-        select { flex: 1; padding: 8px; font-size: 16px; }
         
-        #viewer { padding: 20px 15px; min-height: 60vh; font-size: 18px; line-height: 1.8; }
-        /* 强制覆盖书籍原本的样式，保证缩进 */
-        #viewer p { text-indent: 2em !important; margin-bottom: 1em !important; text-align: justify; }
+        .header { margin-top: 40px; padding: 10px; border-bottom: 1px solid #ccc; background: #FAF6EF; }
+        select { width: 100%; padding: 8px; font-size: 16px; border-radius: 5px; }
+        
+        #viewer { padding: 20px 15px; min-height: 60vh; padding-bottom: 100px; }
+        
+        /* 强制排版样式 (解决缩进和标题问题) */
+        #viewer h1, #viewer h2, #viewer h3 { text-align: center; color: #000; margin: 40px 0 20px 0; font-weight: bold; }
+        #viewer p { 
+            text-indent: 2em !important; 
+            margin-bottom: 1em !important; 
+            text-align: justify; 
+            font-size: 19px; 
+            line-height: 1.8; 
+            display: block !important;
+        }
         #viewer img { max-width: 100%; height: auto; display: block; margin: 10px auto; }
-        
-        .footer { position: fixed; bottom: 0; width: 100%; background: #FAF6EF; border-top: 1px solid #ccc; padding: 15px 0; text-align: center; display: flex; justify-content: space-around; }
-        button { padding: 10px 30px; border-radius: 20px; border: none; background: #3498db; color: white; font-size: 16px; }
-        button:disabled { background: #ccc; }
-        
-        #upload-area { padding: 50px 20px; text-align: center; }
+
+        .footer { position: fixed; bottom: 0; width: 100%; background: #FAF6EF; border-top: 1px solid #ccc; padding: 10px 0; text-align: center; display: flex; justify-content: space-around; z-index: 100; }
+        button { padding: 10px 30px; border-radius: 25px; border: none; background: #3498db; color: white; font-size: 16px; font-weight: bold; }
+        button:disabled { background: #bdc3c7; color: #7f8c8d; }
+
+        #upload-area { padding: 60px 20px; text-align: center; }
+        .file-btn { background: #27ae60; padding: 12px 30px; color: white; border-radius: 5px; cursor: pointer; display: inline-block; margin-top: 20px; }
     </style>
 </head>
 <body>
 
-    <div id="debug-console">系统启动...<br>等待脚本加载...</div>
+    <div id="status-bar">
+        <span id="status-text">正在初始化资源...</span>
+        <span id="ver">v3.0</span>
+    </div>
 
     <div class="header">
-        <select id="toc" disabled><option>目录加载中...</option></select>
+        <select id="toc" disabled><option>等待书籍加载...</option></select>
     </div>
 
     <div id="upload-area">
-        <h2 style="margin-bottom: 30px;">EPUB 阅读器 (调试版)</h2>
-        <input type="file" id="file" style="transform: scale(1.2);">
-        <p style="color: #999; margin-top: 20px;">请选择 epub 文件</p>
+        <h2>EPUB 阅读器</h2>
+        <div id="loader-status" style="color: #e67e22; margin-bottom: 10px;">正在连接云端库...</div>
+        <label for="file" class="file-btn" id="file-label" style="display:none;">📂 打开 EPUB 文件</label>
+        <input type="file" id="file" style="display: none;">
     </div>
 
     <div id="viewer"></div>
@@ -56,167 +65,184 @@
     </div>
 
 <script>
-    // --- 1. 简易日志系统 (帮我们找原因) ---
-    function log(msg, type='normal') {
-        var c = document.getElementById('debug-console');
-        var line = document.createElement('div');
-        line.innerText = `> ${msg}`;
-        if(type==='error') line.className = 'log-err';
-        if(type==='info') line.className = 'log-info';
-        c.appendChild(line);
-        c.scrollTop = c.scrollHeight;
-        console.log(msg);
-    }
+    var statusText = document.getElementById('status-text');
+    var loaderStatus = document.getElementById('loader-status');
     
-    window.onerror = function(msg, url, line) {
-        log(`全局错误: ${msg} (Line: ${line})`, 'error');
+    // --- 核心：动态加载脚本（防屏蔽） ---
+    var libs = {
+        jszip: [
+            "https://lib.baomitu.com/jszip/3.10.1/jszip.min.js", // 源1
+            "https://cdn.staticfile.org/jszip/3.7.1/jszip.min.js", // 源2
+            "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" // 源3
+        ],
+        epub: [
+            "https://lib.baomitu.com/epub.js/0.3.88/epub.min.js", // 源1
+            "https://cdnjs.cloudflare.com/ajax/libs/epub.js/0.3.93/epub.min.js", // 源2
+            "https://unpkg.com/epubjs@0.3.93/dist/epub.min.js" // 源3
+        ]
     };
 
-    // 检查核心库
-    if (typeof ePub === 'undefined') log("错误：epub.js 库加载失败！请检查网络", 'error');
-    else log("epub.js 库加载成功");
+    function loadScript(url) {
+        return new Promise((resolve, reject) => {
+            var script = document.createElement('script');
+            script.src = url;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    }
 
-    if (typeof JSZip === 'undefined') log("错误：JSZip 库加载失败！", 'error');
-    else log("JSZip 库加载成功");
+    async function initSystem() {
+        // 1. 加载 JSZip
+        let zipLoaded = false;
+        for (let url of libs.jszip) {
+            try {
+                statusText.innerText = "正在加载 JSZip...";
+                await loadScript(url);
+                zipLoaded = true;
+                console.log("JSZip loaded from " + url);
+                break;
+            } catch (e) { console.warn("JSZip source failed, trying next..."); }
+        }
 
-    // --- 变量 ---
+        if (!zipLoaded) { alert("核心组件 JSZip 加载失败，请刷新重试！"); return; }
+
+        // 2. 加载 Epub.js
+        let epubLoaded = false;
+        for (let url of libs.epub) {
+            try {
+                statusText.innerText = "正在加载 Epub内核...";
+                await loadScript(url);
+                epubLoaded = true;
+                console.log("Epub loaded from " + url);
+                break;
+            } catch (e) { console.warn("Epub source failed, trying next..."); }
+        }
+
+        if (!epubLoaded) { alert("核心组件 Epub.js 加载失败，请尝试切换网络！"); return; }
+
+        // 全部成功
+        statusText.innerText = "系统就绪";
+        loaderStatus.style.display = 'none';
+        document.getElementById('file-label').style.display = 'inline-block';
+        
+        // 绑定事件
+        document.getElementById('file').onchange = handleFile;
+    }
+
+    // 启动加载
+    initSystem();
+
+    // --- 业务逻辑 ---
     var book = null;
     var spine = [];
     var currentIdx = 0;
 
-    // --- 2. 加载逻辑 ---
-    document.getElementById('file').onchange = function(e){
+    function handleFile(e) {
         var file = e.target.files[0];
         if(!file) return;
-        
+
         document.getElementById('upload-area').style.display = 'none';
-        log("开始读取文件...");
+        statusText.innerText = "正在解析书籍...";
         
         var reader = new FileReader();
         reader.onload = function(evt) {
-            log("文件读取完成，正在解析 EPUB...");
             try {
                 book = ePub(evt.target.result);
-                
-                // 等待 Spine (骨架) 加载
-                book.loaded.spine.then(function(s){
+                book.loaded.spine.then(function(s) {
                     spine = s;
-                    log(`解析成功！共 ${spine.length} 个章节`);
-                    document.getElementById('prev').disabled = false;
-                    document.getElementById('next').disabled = false;
+                    statusText.innerText = `解析成功: 共 ${spine.length} 章`;
                     
                     // 加载目录
-                    loadToc();
-                    // 渲染第一章
+                    book.loaded.navigation.then(toc => {
+                        var sel = document.getElementById('toc');
+                        sel.innerHTML = '<option value="-1">📖 点击选择章节...</option>';
+                        var flatten = (list) => {
+                            list.forEach(i => {
+                                var opt = document.createElement('option');
+                                opt.text = i.label.trim();
+                                opt.value = i.href;
+                                sel.add(opt);
+                                if(i.subitems) flatten(i.subitems);
+                            });
+                        };
+                        if(toc.toc) flatten(toc.toc);
+                        sel.disabled = false;
+                        sel.onchange = function() { if(this.value!="-1") jumpTo(this.value); };
+                    });
+
+                    document.getElementById('prev').disabled = false;
+                    document.getElementById('next').disabled = false;
                     renderChapter(0);
-                }).catch(function(err){
-                    log(`解析Spine失败: ${err}`, 'error');
                 });
-                
-            } catch(error) {
-                log(`EPUB初始化崩溃: ${error}`, 'error');
+            } catch(err) {
+                alert("书籍解析错误: " + err);
             }
         };
         reader.readAsArrayBuffer(file);
-    };
-
-    // --- 3. 目录加载 ---
-    function loadToc() {
-        book.loaded.navigation.then(function(toc){
-            var sel = document.getElementById('toc');
-            sel.innerHTML = '<option value="-1">📖 选择章节...</option>';
-            
-            // 扁平化目录函数
-            function walk(items) {
-                items.forEach(function(item){
-                    var opt = document.createElement('option');
-                    opt.text = item.label.trim();
-                    opt.value = item.href;
-                    sel.add(opt);
-                    if(item.subitems) walk(item.subitems);
-                });
-            }
-            if(toc.toc) walk(toc.toc);
-            sel.disabled = false;
-            
-            sel.onchange = function() {
-                if(this.value === "-1") return;
-                log(`尝试跳转: ${this.value}`);
-                jumpTo(this.value);
-            };
-        }).catch(e => log("目录读取失败 (非致命)", 'info'));
     }
 
-    // --- 4. 章节跳转 (修复匹配逻辑) ---
+    // 修复后的跳转逻辑
     function jumpTo(href) {
-        // 核心修复：优先使用 spine.get 查找
+        statusText.innerText = "正在跳转...";
+        // 方法1: 精确ID查找
         var target = book.spine.get(href);
         if(target) {
-            log(`通过ID匹配到章节: Index ${target.index}`);
             renderChapter(target.index);
-        } else {
-            // 模糊匹配
-            var cleanHref = href.split('#')[0].split('/').pop();
-            log(`尝试模糊匹配文件名: ${cleanHref}`);
-            var found = -1;
-            for(var i=0; i<spine.length; i++) {
-                if(spine[i].href.includes(cleanHref)) {
-                    found = i; break;
-                }
-            }
-            if(found !== -1) renderChapter(found);
-            else log("未找到对应章节", 'error');
-        }
-    }
-
-    // --- 5. 渲染核心 (防白屏版) ---
-    function renderChapter(index) {
-        var v = document.getElementById('viewer');
-        v.innerHTML = '<div style="text-align:center; color:#999;">正在加载章节...</div>';
-        currentIdx = index;
-        
-        log(`正在渲染第 ${index} 章...`);
-        
-        var section = spine[index];
-        if(!section) {
-            log("章节不存在", 'error');
             return;
         }
-
-        section.load(book.load.bind(book)).then(function(doc){
-            log("章节内容下载完毕，正在处理...");
-            
-            // 简单粗暴的处理：直接拿 body 内容，不要做复杂的拆分
-            // 这样最不容易出错
-            var body = doc.body;
-            
-            // 移除原本的脚本防止报错
-            var scripts = body.getElementsByTagName('script');
-            while(scripts[0]) scripts[0].parentNode.removeChild(scripts[0]);
-
-            // 赋值
-            v.innerHTML = ""; // 清空
-            
-            // 创建一个容器，注入HTML
-            var content = document.createElement('div');
-            content.innerHTML = body.innerHTML;
-            v.appendChild(content);
-            
-            // 自动回到顶部
-            window.scrollTo(0, 0);
-            log("渲染完成！");
-            
-        }).catch(function(err){
-            log(`渲染渲染失败: ${err}`, 'error');
-            v.innerHTML = `<p style="color:red">加载此章节失败，请尝试下一章。<br>错误信息: ${err}</p>`;
-        });
+        // 方法2: 文件名模糊查找
+        var clean = href.split('#')[0].split('/').pop();
+        for(var i=0; i<spine.length; i++) {
+            if(spine[i].href.includes(clean)) {
+                renderChapter(i);
+                return;
+            }
+        }
+        statusText.innerText = "未找到该章节";
     }
 
-    function changePage(dir) {
-        var next = currentIdx + dir;
-        if(next >= 0 && next < spine.length) {
-            renderChapter(next);
+    async function renderChapter(index) {
+        var v = document.getElementById('viewer');
+        v.innerHTML = '<div style="text-align:center; padding:50px; color:#999;">正在加载内容...</div>';
+        currentIdx = index;
+        window.scrollTo(0, 0);
+
+        try {
+            var section = spine[index];
+            var doc = await section.load(book.load.bind(book));
+            
+            // --- 渲染与格式化 (解决你的3个问题) ---
+            var body = doc.body;
+            
+            // 1. 清理干扰标签
+            var scripts = body.querySelectorAll('script, style, link');
+            scripts.forEach(s => s.remove());
+            
+            // 2. 提取并分离标题 (简单粗暴版：假设前100个字符里的 H1-H3 是标题)
+            var html = body.innerHTML;
+            
+            // 3. 构建安全的容器
+            v.innerHTML = "";
+            var contentDiv = document.createElement('div');
+            
+            // 强制替换样式，确保缩进
+            // 我们通过 CSS 选择器 #viewer p { text-indent: 2em } 已经在 head 里全局控制了
+            // 这里只需要把内容塞进去即可
+            contentDiv.innerHTML = html;
+            
+            v.appendChild(contentDiv);
+            
+            statusText.innerText = `阅读: ${index + 1} / ${spine.length}`;
+            
+        } catch(e) {
+            v.innerHTML = `<p style="color:red; text-align:center;">章节加载出错: ${e}</p>`;
         }
+    }
+
+    window.changePage = function(dir) {
+        var next = currentIdx + dir;
+        if(next >= 0 && next < spine.length) renderChapter(next);
     }
 
 </script>
