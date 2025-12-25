@@ -8,7 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        /* 🎨 核心视觉变量系统：日间原色，夜间极客黑 */
+        /* 🎨 核心视觉变量系统 */
         :root {
             --bg: #FAF6EF; 
             --text: #333; 
@@ -18,7 +18,6 @@
             --divider: rgba(0, 0, 0, 0.1);
         }
 
-        /* 🌙 极客级系统自动感光 */
         @media (prefers-color-scheme: dark) {
             :root {
                 --bg: #1A1A1A; 
@@ -31,25 +30,44 @@
         }
 
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; 
             margin: 0; padding: 0; 
             background-color: var(--bg); 
             color: var(--text); 
             padding-bottom: 120px; padding-top: 60px; 
-            transition: background-color 0.5s ease, color 0.5s ease; /* 丝滑切换动效 */
+            transition: background-color 0.5s ease, color 0.5s ease; 
         }
 
         .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; z-index: 100; transition: background 0.5s ease; }
         .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 110px; background: var(--bg); box-shadow: 0 -5px 20px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; transition: background 0.5s ease; }
         .ver-tag { position: absolute; top: 5px; left: 5px; font-size: 10px; color: purple; font-weight: bold; z-index: 101; background: rgba(243, 229, 245, 0.5); padding: 2px 4px; border-radius: 4px; opacity: 0.6; }
-        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--toc-bg); padding-left: 10px; -webkit-appearance: none; color: var(--text); }
+        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--toc-bg); padding-left: 10px; -webkit-appearance: none; color: var(--text); outline: none; }
         
         article#viewer { background: var(--bg); padding: 20px 20px; min-height: 80vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; display: block; transition: background 0.5s ease; }
         
-        h2 { color: var(--h2-color); font-weight: 900; font-size: 1.8em; margin-top: 40px; margin-bottom: 30px; line-height: 1.4; }
-        
-        /* ✅ 修改点1：添加 text-indent: 2em，解决缩进问题 */
-        p { margin-bottom: 24px; text-align: justify; outline: none; font-size: 22px; font-weight: normal; line-height: 1.8; text-indent: 2em; }
+        /* 修复：标题居中且不缩进 */
+        h2 { 
+            color: var(--h2-color); 
+            font-weight: 900; 
+            font-size: 1.6em; 
+            margin-top: 60px; 
+            margin-bottom: 40px; 
+            line-height: 1.4; 
+            text-align: center;
+            text-indent: 0; 
+        }
+
+        /* 修复：段落首行缩进 2em */
+        p { 
+            margin-bottom: 20px; 
+            text-align: justify; 
+            outline: none; 
+            font-size: 20px; 
+            font-weight: normal; 
+            line-height: 1.8; 
+            text-indent: 2em; 
+            margin-top: 0;
+        }
         
         .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), var(--divider), rgba(0, 0, 0, 0)); margin-top: 50px; margin-bottom: 50px; }
         @keyframes flash { 0% { background-color: #ffe69c; } 100% { background-color: transparent; } }
@@ -65,7 +83,7 @@
 </head>
 <body>
     <header class="header">
-        <div class="ver-tag"></div>
+        <div class="ver-tag">CleanFix</div>
         <select id="toc-select" disabled><option></option></select>
     </header>
 
@@ -150,81 +168,110 @@
                     let section = spine.get(i);
                     let doc = await section.load(book.load.bind(book));
                     doc.querySelectorAll('style, script, link, meta').forEach(item => item.remove());
-                    let text = doc.body ? doc.body.innerText : (doc.textContent || "");
-                    let paragraphs = text.split(/\n+/);
+
+                    // --- 修复逻辑 1: 防止正文和标题粘连 ---
+                    // 先处理 HTML，将块级元素结尾替换为换行符，然后再提取文本
+                    let htmlContent = doc.body.innerHTML;
+                    htmlContent = htmlContent.replace(/<\/(h[1-6]|p|div|li|blockquote)>/gi, '\n'); 
+                    htmlContent = htmlContent.replace(/<br\s*\/?>/gi, '\n');
                     
+                    // 创建临时容器提取纯文本
+                    let tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = htmlContent;
+                    let text = tempDiv.innerText;
+
+                    let paragraphs = text.split(/\n+/);
                     let chapterSection = document.createElement('section'); 
                     chapterSection.id = 'chapter-' + i;
                     if (i > startIndex) { let hr = document.createElement('hr'); hr.className = 'chapter-divider'; chapterSection.appendChild(hr); }
                     
-                    let titleBuffer = ""; 
-                    let titleIndex = -1;
-                    let hasShownMainTitle = false; 
-
                     let cleanParas = paragraphs.map(p => p.replace(/[\u00a0\u200b\u3000]/g, ' ').trim())
                                                .filter(p => p.length > 0 && !JUNK_REGEX.test(p));
 
-                    cleanParas.forEach(function(pText, idx) {
-                        var hasKeyword = TITLE_KEYWORDS.some(k => pText.includes(k));
-                        if (!hasShownMainTitle && titleBuffer === "" && !hasKeyword) { if (idx < 5) return; }
-                        var isShortLine = pText.length < 50 && !/[。.!！?？”"]$/.test(pText);
-                        let splitTitle = null, splitBody = null;
-                        if (hasKeyword && pText.length >= 50) {
-                            let splitIdx = pText.indexOf(' ');
-                            if (splitIdx > 0 && splitIdx < 30) {
-                                splitTitle = pText.substring(0, splitIdx);
-                                splitBody = pText.substring(splitIdx + 1);
-                                isShortLine = true; 
-                            }
-                        }
-                        if (idx < 10 && !hasShownMainTitle) {
-                            if (splitTitle) {
-                                if (titleBuffer !== "") titleBuffer += " ";
-                                titleBuffer += splitTitle;
-                                let h2 = document.createElement('h2'); h2.innerText = titleBuffer; h2.setAttribute('data-index', i);
-                                chapterSection.appendChild(h2);
-                                let p = document.createElement('p'); p.innerText = splitBody; chapterSection.appendChild(p);
-                                hasShownMainTitle = true; titleBuffer = ""; return; 
-                            } 
-                            else if (hasKeyword || (titleBuffer !== "" && isShortLine)) {
-                                // ✅ 修改点2：如果标题缓存中已经包含了这段文字，就不要重复添加了
-                                if (titleBuffer.indexOf(pText) !== -1) return;
+                    // --- 修复逻辑 2: 重构标题识别与分离 ---
+                    let titleFound = false;
+                    let titleBuffer = "";
 
-                                if (titleBuffer !== "") titleBuffer += " "; 
-                                titleBuffer += pText;
-                                if (titleIndex === -1) titleIndex = i; return; 
+                    cleanParas.forEach(function(pText, idx) {
+                        let isShort = pText.length < 50;
+                        let hasKeyword = TITLE_KEYWORDS.some(k => pText.includes(k));
+                        
+                        // 标题判定策略：在前5行内，且短，或包含关键词
+                        // 一旦遇到长段落，或者已经输出了标题，之后全部视为正文
+                        if (!titleFound && idx < 5 && (isShort || hasKeyword)) {
+                            // --- 修复逻辑 3: 去除重复词 (如 "第25节 标题 第25节") ---
+                            // 简单的首尾去重算法
+                            let cleanText = pText;
+                            if (cleanText.length > 4) {
+                                // 尝试检测开头部分是否在结尾重复
+                                let match = cleanText.match(/^(.{2,10}).*\1$/);
+                                if (match) {
+                                    // 如果发现重复，去掉结尾的重复部分
+                                    cleanText = cleanText.substring(0, cleanText.lastIndexOf(match[1])).trim();
+                                }
                             }
+
+                            // 避免完全重复的行叠加
+                            if (!titleBuffer.includes(cleanText)) {
+                                titleBuffer += (titleBuffer ? " " : "") + cleanText;
+                            }
+
+                            // 如果这行虽然短，但没有关键词，且已经是缓冲区后的第2+行，可能就是正文了
+                            if (!hasKeyword && titleBuffer.length > 0 && idx > 1) {
+                                titleFound = true; // 强制结束标题寻找
+                                renderTitle(titleBuffer, i, chapterSection);
+                                renderPara(pText, i, chapterSection);
+                            }
+                        } else {
+                            // 遇到长段落，必须先结算标题
+                            if (!titleFound && titleBuffer !== "") {
+                                renderTitle(titleBuffer, i, chapterSection);
+                                titleFound = true;
+                            }
+                            titleFound = true; // 锁定为正文模式
+                            renderPara(pText, i, chapterSection);
                         }
-                        if (titleBuffer !== "") {
-                            let h2 = document.createElement('h2'); h2.innerText = titleBuffer; h2.setAttribute('data-index', titleIndex);
-                            chapterSection.appendChild(h2); titleBuffer = ""; hasShownMainTitle = true;
-                        }
-                        let el = document.createElement('p'); el.innerText = pText;
-                        if (titleIndex === -1 && !hasShownMainTitle) { el.setAttribute('data-index', i); titleIndex = -2; }
-                        chapterSection.appendChild(el);
                     });
-                    if (titleBuffer !== "") {
-                        let h2 = document.createElement('h2'); h2.innerText = titleBuffer; h2.setAttribute('data-index', titleIndex);
-                        chapterSection.appendChild(h2);
+                    
+                    // 如果只有标题没有正文（特殊情况）
+                    if (!titleFound && titleBuffer !== "") {
+                        renderTitle(titleBuffer, i, chapterSection);
                     }
+
                     if (chapterSection.hasChildNodes()) viewer.appendChild(chapterSection);
-                } catch (e) {}
+                } catch (e) { console.error(e); }
             }
             document.getElementById('loading').style.display = 'none';
+            // 滚动定位逻辑保持不变
             if (targetScrollIndex !== null) {
                 setTimeout(() => {
                     var target = document.querySelector(`[data-index='${targetScrollIndex}']`);
                     if (target) {
                         target.scrollIntoView({ behavior: 'auto', block: 'start' }); window.scrollBy(0, -70);
                         target.classList.add('highlight-target');
-                        target.setAttribute('tabindex', '-1'); target.focus();
-                        try {
-                            const range = document.createRange(); const sel = window.getSelection();
-                            range.selectNodeContents(target); sel.removeAllRanges(); sel.addRange(range);
-                        } catch(err) {}
+                        try { target.focus(); } catch(e){}
                     }
                 }, 250);
             }
+        }
+
+        // 辅助函数：渲染标题
+        function renderTitle(text, index, container) {
+            let h2 = document.createElement('h2');
+            h2.innerText = text;
+            h2.setAttribute('data-index', index);
+            container.appendChild(h2);
+        }
+
+        // 辅助函数：渲染正文
+        function renderPara(text, index, container) {
+            let p = document.createElement('p');
+            p.innerText = text;
+            // 只有当没有data-index时才加，避免覆盖标题的索引
+            if (!container.querySelector(`[data-index='${index}']`)) {
+                p.setAttribute('data-index', index);
+            }
+            container.appendChild(p);
         }
 
         function loadChapterByMatch(href, label) {
