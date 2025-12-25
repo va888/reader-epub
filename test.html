@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>EPUB纯净版阅读器</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
@@ -35,12 +35,25 @@
             margin: 0; padding: 0; 
             background-color: var(--bg); 
             color: var(--text); 
-            padding-bottom: 120px; padding-top: 60px; 
-            transition: background-color 0.5s ease, color 0.5s ease; /* 丝滑切换动效 */
+            /* [调整] 底部留白减少，适配变小的 Footer */
+            padding-bottom: 90px; padding-top: 60px; 
+            transition: background-color 0.5s ease, color 0.5s ease;
         }
 
         .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 15px; z-index: 100; transition: background 0.5s ease; }
-        .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 110px; background: var(--bg); box-shadow: 0 -5px 20px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; z-index: 100; flex-direction: column; transition: background 0.5s ease; }
+        
+        /* [调整] Footer 高度从 110px 减小到 80px，并增加安全区域适配 */
+        .footer { 
+            position: fixed; bottom: 0; left: 0; right: 0; 
+            height: 80px; /* 变矮 */
+            background: var(--bg); 
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.05); 
+            display: flex; justify-content: center; align-items: center; 
+            z-index: 100; flex-direction: column; 
+            transition: background 0.5s ease; 
+            padding-bottom: env(safe-area-inset-bottom); /* 适配 iPhone 底部黑条 */
+        }
+
         .ver-tag { position: absolute; top: 5px; left: 5px; font-size: 10px; color: purple; font-weight: bold; z-index: 101; background: rgba(243, 229, 245, 0.5); padding: 2px 4px; border-radius: 4px; opacity: 0.6; }
         #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--toc-bg); padding-left: 10px; -webkit-appearance: none; color: var(--text); }
         
@@ -53,7 +66,17 @@
         @keyframes flash { 0% { background-color: #ffe69c; } 100% { background-color: transparent; } }
         .highlight-target { animation: flash 2s ease-out; }
         .control-group { display: flex; width: 90%; justify-content: space-between; align-items: center; }
-        .nav-btn { width: 48%; height: 55px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; color: white; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        
+        /* [调整] 按钮高度从 55px 减小到 42px，字体从 18px 减小到 16px */
+        .nav-btn { 
+            width: 48%; 
+            height: 42px; /* 变瘦 */
+            border: none; border-radius: 10px; /* 圆角微调 */
+            font-size: 16px; /* 字体微调 */
+            font-weight: bold; color: white; cursor: pointer; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+        }
+        
         #prev-btn { background-color: #bdc3c7; color: #555; } 
         #next-btn { background-color: #3498db; }
         .upload-container { padding: 40px 20px; text-align: center; margin-top: 40px; }
@@ -79,7 +102,7 @@
     <article id="viewer"></article>
 
     <footer class="footer">
-        <div id="page-info" style="font-size:12px; color:#999; margin-bottom:8px;"></div>
+        <div id="page-info" style="font-size:12px; color:#999; margin-bottom:5px;"></div>
         <div class="control-group">
             <button id="prev-btn" class="nav-btn" disabled>上一组</button>
             <button id="next-btn" class="nav-btn" disabled>下一组</button>
@@ -90,7 +113,6 @@
     <script>
         var book = null, spine = [], currentStartIndex = 0, BATCH_SIZE = 10;
         var TITLE_KEYWORDS = ["第", "章", "Chapter", "序", "前言", "Prologue", "Introduction", "卷", "部", "节", "Part"];
-        // 增加对纯数字行的容错，避免删除年份或特定数值
         var JUNK_REGEX = /^(cover|unknown|未知|封面|title page|copyright|content|目录|前言|author|book|page)$/i; 
 
         localforage.config({ name: 'listenflow_db' });
@@ -122,7 +144,6 @@
                             items.forEach(function(item) {
                                 var option = document.createElement('option');
                                 option.text = item.label.trim(); 
-                                // 使用 encodeURIComponent 防止 href 中的特殊字符破坏 value 结构
                                 option.value = encodeURIComponent(item.href) + "|" + item.label.trim();
                                 select.add(option); if (item.subitems) flatten(item.subitems);
                             });
@@ -153,7 +174,6 @@
                 try {
                     let section = spine.get(i);
                     let doc = await section.load(book.load.bind(book));
-                    // 移除干扰元素
                     doc.querySelectorAll('style, script, link, meta').forEach(item => item.remove());
                     let text = doc.body ? doc.body.innerText : (doc.textContent || "");
                     let paragraphs = text.split(/\n+/);
@@ -172,18 +192,12 @@
                     cleanParas.forEach(function(pText, idx) {
                         var hasKeyword = TITLE_KEYWORDS.some(k => pText.includes(k));
                         
-                        // [逻辑修复] 删除了原有的 if (!hasShownMainTitle ... idx < 5) return; 
-                        // 这是一个危险逻辑，会导致没有标准标题的章节开头内容丢失。
-                        
-                        // 增强短行判断：除了长度，还得看标点，避免将对话合并到标题
                         var isShortLine = pText.length < 50 && !/[。.!！?？”"：:]$/.test(pText);
                         
                         let splitTitle = null, splitBody = null;
                         
-                        // 尝试处理 "第1章 标题" 后面紧跟正文在同一行的情况
                         if (hasKeyword && pText.length >= 50) {
                             let splitIdx = pText.indexOf(' ');
-                            // 限制分割点位置，避免误切长句
                             if (splitIdx > 0 && splitIdx < 30) {
                                 splitTitle = pText.substring(0, splitIdx);
                                 splitBody = pText.substring(splitIdx + 1);
@@ -191,7 +205,6 @@
                             }
                         }
 
-                        // 前几行尝试合并标题
                         if (idx < 10 && !hasShownMainTitle) {
                             if (splitTitle) {
                                 if (titleBuffer !== "") titleBuffer += " ";
@@ -208,23 +221,19 @@
                             }
                         }
 
-                        // 遇到正文，如果缓存区有标题，先渲染标题
                         if (titleBuffer !== "") {
                             let h2 = document.createElement('h2'); h2.innerText = titleBuffer; h2.setAttribute('data-index', titleIndex);
                             chapterSection.appendChild(h2); titleBuffer = ""; hasShownMainTitle = true;
                         }
 
-                        // 渲染普通段落
                         let el = document.createElement('p'); el.innerText = pText;
-                        // 如果这一章完全没有检测到标题，给第一段打上索引标记，方便跳转
                         if (titleIndex === -1 && !hasShownMainTitle && idx === 0) { 
                             el.setAttribute('data-index', i); 
-                            titleIndex = -2; // 标记已处理
+                            titleIndex = -2; 
                         }
                         chapterSection.appendChild(el);
                     });
 
-                    // 循环结束后，如果还有遗留的标题缓存
                     if (titleBuffer !== "") {
                         let h2 = document.createElement('h2'); h2.innerText = titleBuffer; h2.setAttribute('data-index', titleIndex);
                         chapterSection.appendChild(h2);
@@ -236,13 +245,11 @@
             }
             document.getElementById('loading').style.display = 'none';
             
-            // 跳转处理
             if (targetScrollIndex !== null) {
                 setTimeout(() => {
                     var target = document.querySelector(`[data-index='${targetScrollIndex}']`);
                     if (target) {
                         target.scrollIntoView({ behavior: 'auto', block: 'start' }); 
-                        // 增加偏移量，防止被 fixed header 遮挡
                         window.scrollBy(0, -70); 
                         target.classList.add('highlight-target');
                         target.setAttribute('tabindex', '-1'); target.focus();
@@ -259,7 +266,6 @@
             var targetIndex = -1; var spineItem = book.spine.get(href);
             if (spineItem) { targetIndex = spineItem.index; } 
             else {
-                // 兼容处理：尝试匹配文件名
                 var targetName = href.split('#')[0].split('/').pop();
                 for(var i=0; i<spine.length; i++) {
                     if (decodeURIComponent(spine[i].href).indexOf(targetName) !== -1) { targetIndex = i; break; }
