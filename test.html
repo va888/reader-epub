@@ -8,30 +8,34 @@
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        /* 🎨 核心视觉变量系统 */
+        /* 🎨 视觉升级：复刻 Apple Books 羊皮纸配色与夜间模式 */
         :root {
-            --bg: #FAF6EF; 
-            --text: #333; 
-            --h2-color: #000; 
-            --border: #e0e0e0; 
+            /* [调整] 更柔和的羊皮纸色，接近 Apple Books 原生背景 */
+            --bg: #F9F4E9; 
+            /* [调整] 字体颜色改为深灰，而非纯黑，减少视觉刺痛 */
+            --text: #383838; 
+            --h2-color: #222; 
+            --subtitle-color: #666;
+            --border: #e6dfc8; 
             --toc-bg: #fdfbf7;
-            --divider: rgba(0, 0, 0, 0.1);
+            --divider: rgba(0, 0, 0, 0.08);
         }
 
-        /* 🌙 夜间模式 */
         @media (prefers-color-scheme: dark) {
             :root {
-                --bg: #1A1A1A; 
-                --text: #F0F0F0; 
-                --h2-color: #FFFFFF; 
-                --border: #333333; 
-                --toc-bg: #222222;
+                --bg: #1C1C1E; /* Apple 官方深色背景 */
+                --text: #AEAEB2; 
+                --h2-color: #E5E5EA; 
+                --subtitle-color: #8E8E93;
+                --border: #333; 
+                --toc-bg: #2C2C2E;
                 --divider: rgba(255, 255, 255, 0.1);
             }
         }
 
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            /* [核心修改] 切换为宋体/衬线体，这是“书卷气”的来源 */
+            font-family: "Songti SC", "Noto Serif SC", STSong, "AR PL New Sung", serif;
             margin: 0; padding: 0; 
             background-color: var(--bg); 
             color: var(--text); 
@@ -45,7 +49,8 @@
             position: fixed; bottom: 0; left: 0; right: 0; 
             height: 80px; 
             background: var(--bg); 
-            box-shadow: 0 -5px 20px rgba(0,0,0,0.05); 
+            /* 柔和的阴影 */
+            box-shadow: 0 -1px 15px rgba(0,0,0,0.03); 
             display: flex; justify-content: center; align-items: center; 
             z-index: 100; flex-direction: column; 
             transition: background 0.5s ease; 
@@ -53,42 +58,62 @@
         }
 
         .ver-tag { position: absolute; top: 5px; left: 5px; font-size: 10px; color: purple; font-weight: bold; z-index: 101; background: rgba(243, 229, 245, 0.5); padding: 2px 4px; border-radius: 4px; opacity: 0.6; }
-        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--toc-bg); padding-left: 10px; -webkit-appearance: none; color: var(--text); }
+        #toc-select { width: 100%; height: 40px; font-size: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--toc-bg); padding-left: 10px; -webkit-appearance: none; color: var(--text); font-family: inherit; }
         
-        article#viewer { background: var(--bg); padding: 20px 20px; min-height: 80vh; line-height: 1.8; font-size: 20px; white-space: pre-wrap; display: block; transition: background 0.5s ease; }
+        article#viewer { 
+            background: var(--bg); 
+            /* [调整] 左右边距微调，增加呼吸感 */
+            padding: 20px 24px; 
+            min-height: 80vh; 
+            display: block; 
+            transition: background 0.5s ease; 
+        }
         
-        h2 { color: var(--h2-color); font-weight: 900; font-size: 1.8em; margin-top: 40px; margin-bottom: 30px; line-height: 1.4; }
-        
-        /* ✅ 首行缩进已保留 */
+        /* [核心修改] 标题样式重构：居中、宋体、加粗适度 */
+        h2 { 
+            color: var(--h2-color); 
+            font-weight: 700; 
+            font-size: 1.6em; 
+            margin-top: 50px; 
+            margin-bottom: 40px; 
+            line-height: 1.4; 
+            text-align: center; /* 居中对齐 */
+            letter-spacing: 0.05em; /* 字间距微调 */
+        }
+
         p { 
-            margin-bottom: 24px; 
+            margin-bottom: 20px; 
             text-align: justify; 
             text-indent: 2em; 
             outline: none; 
-            font-size: 22px; 
+            /* [调整] 字体大小微调，更精致 */
+            font-size: 21px; 
             font-weight: normal; 
-            line-height: 1.8; 
+            /* [调整] 行高增加，阅读更轻松 */
+            line-height: 1.9; 
+            letter-spacing: 0.02em;
         }
         
-        .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), var(--divider), rgba(0, 0, 0, 0)); margin-top: 50px; margin-bottom: 50px; }
-        @keyframes flash { 0% { background-color: #ffe69c; } 100% { background-color: transparent; } }
+        .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), var(--divider), rgba(0, 0, 0, 0)); margin-top: 60px; margin-bottom: 60px; }
+        @keyframes flash { 0% { background-color: rgba(255, 204, 0, 0.3); } 100% { background-color: transparent; } }
         .highlight-target { animation: flash 2s ease-out; }
         .control-group { display: flex; width: 90%; justify-content: space-between; align-items: center; }
         
         .nav-btn { 
             width: 48%; 
             height: 42px; 
-            border: none; border-radius: 10px; 
+            border: none; border-radius: 8px; /* 圆角稍微方一点，更现代 */
             font-size: 16px; 
-            font-weight: bold; color: white; cursor: pointer; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif; /* 按钮保持黑体，易读 */
+            font-weight: 600; color: white; cursor: pointer; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
         }
         
-        #prev-btn { background-color: #bdc3c7; color: #555; } 
-        #next-btn { background-color: #3498db; }
+        #prev-btn { background-color: #C7C7CC; color: #333; } 
+        #next-btn { background-color: #007AFF; } /* Apple Blue */
         .upload-container { padding: 40px 20px; text-align: center; margin-top: 40px; }
-        #resume-btn { display: none; width: 80%; padding: 15px; margin: 0 auto 20px auto; background: #27ae60; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; }
-        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 200; }
+        #resume-btn { display: none; width: 80%; padding: 15px; margin: 0 auto 20px auto; background: #34C759; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; }
+        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.7); color: white; padding: 20px; border-radius: 10px; display: none; z-index: 200; backdrop-filter: blur(10px); }
     </style>
 </head>
 <body>
@@ -98,10 +123,10 @@
     </header>
 
     <div class="upload-container" id="upload-area">
-        <h2>EPUB纯净版阅读器</h2>
+        <h2 style="text-align: center; font-family: -apple-system, sans-serif;">EPUB纯净版阅读器</h2>
         <button id="resume-btn">🔄 继续阅读</button>
         <div style="margin-top: 20px;">
-            <label for="file-input" style="color: #3498db; cursor: pointer;">📂 打开书籍</label>
+            <label for="file-input" style="color: #007AFF; cursor: pointer; font-family: -apple-system, sans-serif;">📂 打开书籍</label>
             <input type="file" id="file-input" style="display: none;">
         </div>
     </div>
@@ -109,7 +134,7 @@
     <article id="viewer"></article>
 
     <footer class="footer">
-        <div id="page-info" style="font-size:12px; color:#999; margin-bottom:5px;"></div>
+        <div id="page-info" style="font-size:12px; color:#8E8E93; margin-bottom:8px; font-family: -apple-system, sans-serif;"></div>
         <div class="control-group">
             <button id="prev-btn" class="nav-btn" disabled>上一组</button>
             <button id="next-btn" class="nav-btn" disabled>下一组</button>
@@ -181,25 +206,23 @@
                 try {
                     let section = spine.get(i);
                     let doc = await section.load(book.load.bind(book));
-                    
-                    // 移除干扰元素
                     doc.querySelectorAll('style, script, link, meta').forEach(item => item.remove());
 
                     let cleanParas = [];
-                    // [🔥核心修复] 优先使用 DOM 标签结构分段，而不是依赖纯文本换行
-                    // 这能彻底解决“文字挤在一起、不分段”的问题
-                    let pElements = doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, blockquote, li');
+                    // DOM 智能扫描
+                    let pElements = doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, blockquote, li, div');
                     
-                    if (pElements.length > 2) {
-                        // 策略A: 如果书本结构规范，直接使用标签内容
+                    if (pElements.length > 5) {
                         pElements.forEach(el => {
+                            // 忽略空 div
+                            if(el.tagName.toLowerCase() === 'div' && el.children.length > 0) return;
+                            
                             let txt = el.innerText.replace(/[\u00a0\u200b\u3000]/g, ' ').trim();
                             if (txt.length > 0 && !JUNK_REGEX.test(txt)) {
                                 cleanParas.push(txt);
                             }
                         });
                     } else {
-                        // 策略B: 兜底逻辑，如果找不到标签，才尝试用换行符分割（针对极少数特殊排版）
                         let text = doc.body ? doc.body.innerText : (doc.textContent || "");
                         cleanParas = text.split(/\n+/).map(p => p.replace(/[\u00a0\u200b\u3000]/g, ' ').trim())
                                            .filter(p => p.length > 0 && !JUNK_REGEX.test(p));
@@ -215,11 +238,11 @@
 
                     cleanParas.forEach(function(pText, idx) {
                         var hasKeyword = TITLE_KEYWORDS.some(k => pText.includes(k));
-                        var isShortLine = pText.length < 50 && !/[。.!！?？”"：:]$/.test(pText);
+                        var isShortLine = pText.length < 60 && !/[。.!！?？”"：:]$/.test(pText); // 增加长度容错
                         
                         let splitTitle = null, splitBody = null;
                         
-                        if (hasKeyword && pText.length >= 50) {
+                        if (hasKeyword && pText.length >= 60) {
                             let splitIdx = pText.indexOf(' ');
                             if (splitIdx > 0 && splitIdx < 30) {
                                 splitTitle = pText.substring(0, splitIdx);
@@ -228,7 +251,7 @@
                             }
                         }
 
-                        if (idx < 10 && !hasShownMainTitle) {
+                        if (idx < 15 && !hasShownMainTitle) { // 增加标题搜索范围
                             if (splitTitle) {
                                 if (titleBuffer !== "") titleBuffer += " ";
                                 titleBuffer += splitTitle;
@@ -239,13 +262,18 @@
                                 hasShownMainTitle = true; titleBuffer = ""; return; 
                             } 
                             else if (hasKeyword || (titleBuffer !== "" && isShortLine)) {
-                                if (titleBuffer !== "") titleBuffer += " "; titleBuffer += pText;
+                                if (titleBuffer !== "") titleBuffer += "\n"; // 使用换行符分隔多行标题
+                                titleBuffer += pText;
                                 if (titleIndex === -1) titleIndex = i; return; 
                             }
                         }
 
                         if (titleBuffer !== "") {
-                            let h2 = document.createElement('h2'); h2.innerText = titleBuffer; h2.setAttribute('data-index', titleIndex);
+                            let h2 = document.createElement('h2'); 
+                            // 处理多行标题换行显示
+                            h2.innerHTML = titleBuffer.replace(/\n/g, '<br><span style="font-size:0.7em; color:var(--subtitle-color); font-weight:normal; display:block; margin-top:10px;">') + (titleBuffer.includes('\n') ? '</span>' : '');
+                            
+                            h2.setAttribute('data-index', titleIndex);
                             chapterSection.appendChild(h2); titleBuffer = ""; hasShownMainTitle = true;
                         }
 
@@ -258,7 +286,9 @@
                     });
 
                     if (titleBuffer !== "") {
-                        let h2 = document.createElement('h2'); h2.innerText = titleBuffer; h2.setAttribute('data-index', titleIndex);
+                        let h2 = document.createElement('h2'); 
+                        h2.innerHTML = titleBuffer.replace(/\n/g, '<br><span style="font-size:0.7em; color:var(--subtitle-color); font-weight:normal; display:block; margin-top:10px;">') + (titleBuffer.includes('\n') ? '</span>' : '');
+                        h2.setAttribute('data-index', titleIndex);
                         chapterSection.appendChild(h2);
                     }
                     if (chapterSection.hasChildNodes()) viewer.appendChild(chapterSection);
