@@ -8,7 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.88/dist/epub.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
-        /* 🎨 核心视觉变量系统：日间原色，夜间极客黑 */
+        /* 🎨 核心视觉变量系统 */
         :root {
             --bg: #FAF6EF; 
             --text: #333; 
@@ -18,7 +18,7 @@
             --divider: rgba(0, 0, 0, 0.1);
         }
 
-        /* 🌙 极客级系统自动感光 */
+        /* 🌙 夜间模式 */
         @media (prefers-color-scheme: dark) {
             :root {
                 --bg: #1A1A1A; 
@@ -59,11 +59,11 @@
         
         h2 { color: var(--h2-color); font-weight: 900; font-size: 1.8em; margin-top: 40px; margin-bottom: 30px; line-height: 1.4; }
         
-        /* [调整] 增加 text-indent: 2em 实现首行缩进两个字符 */
+        /* ✅ 首行缩进已保留 */
         p { 
             margin-bottom: 24px; 
             text-align: justify; 
-            text-indent: 2em; /* 中文排版标准缩进 */
+            text-indent: 2em; 
             outline: none; 
             font-size: 22px; 
             font-weight: normal; 
@@ -181,9 +181,29 @@
                 try {
                     let section = spine.get(i);
                     let doc = await section.load(book.load.bind(book));
+                    
+                    // 移除干扰元素
                     doc.querySelectorAll('style, script, link, meta').forEach(item => item.remove());
-                    let text = doc.body ? doc.body.innerText : (doc.textContent || "");
-                    let paragraphs = text.split(/\n+/);
+
+                    let cleanParas = [];
+                    // [🔥核心修复] 优先使用 DOM 标签结构分段，而不是依赖纯文本换行
+                    // 这能彻底解决“文字挤在一起、不分段”的问题
+                    let pElements = doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, blockquote, li');
+                    
+                    if (pElements.length > 2) {
+                        // 策略A: 如果书本结构规范，直接使用标签内容
+                        pElements.forEach(el => {
+                            let txt = el.innerText.replace(/[\u00a0\u200b\u3000]/g, ' ').trim();
+                            if (txt.length > 0 && !JUNK_REGEX.test(txt)) {
+                                cleanParas.push(txt);
+                            }
+                        });
+                    } else {
+                        // 策略B: 兜底逻辑，如果找不到标签，才尝试用换行符分割（针对极少数特殊排版）
+                        let text = doc.body ? doc.body.innerText : (doc.textContent || "");
+                        cleanParas = text.split(/\n+/).map(p => p.replace(/[\u00a0\u200b\u3000]/g, ' ').trim())
+                                           .filter(p => p.length > 0 && !JUNK_REGEX.test(p));
+                    }
                     
                     let chapterSection = document.createElement('section'); 
                     chapterSection.id = 'chapter-' + i;
@@ -193,12 +213,8 @@
                     let titleIndex = -1;
                     let hasShownMainTitle = false; 
 
-                    let cleanParas = paragraphs.map(p => p.replace(/[\u00a0\u200b\u3000]/g, ' ').trim())
-                                               .filter(p => p.length > 0 && !JUNK_REGEX.test(p));
-
                     cleanParas.forEach(function(pText, idx) {
                         var hasKeyword = TITLE_KEYWORDS.some(k => pText.includes(k));
-                        
                         var isShortLine = pText.length < 50 && !/[。.!！?？”"：:]$/.test(pText);
                         
                         let splitTitle = null, splitBody = null;
