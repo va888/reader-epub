@@ -9,9 +9,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
         :root {
-            /* 🔴 核心调整：还原 Apple Books 的暖白底色 */
+            /* 🔴 Apple Books 暖白底色 */
             --bg: #F8F8F8; 
-            /* 字体颜色加深，增加对比度 */
             --text: #111; 
             --h2-color: #000; 
             --subtitle-color: #666;
@@ -33,13 +32,13 @@
         }
 
         body { 
-            /* 🔴 核心调整：精准指定 iOS 原生宋体，去掉通用 serif */
+            /* 🔴 iOS 原生宋体 */
             font-family: "Songti SC", "STSong", "Hiragino Mincho ProN", serif;
             margin: 0; padding: 0; 
             background-color: var(--bg); 
             color: var(--text); 
             padding-bottom: 90px; padding-top: 60px; 
-            /* 🔴 核心调整：让字体变细、变锐利 */
+            /* 字体锐化 */
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             font-weight: normal; 
@@ -58,44 +57,41 @@
         #toc-select { width: 100%; height: 40px; font-size: 16px; border: none; border-radius: 8px; background: rgba(0,0,0,0.05); padding-left: 10px; -webkit-appearance: none; color: var(--text); font-family: inherit; font-weight: bold; }
         
         article#viewer { 
-            /* 左右边距对齐 iPhone 标准 */
             padding: 10px 24px; 
             min-height: 80vh; 
             display: block; 
         }
         
-        /* 🔴 核心调整：标题排版 */
         h2 { 
             color: var(--h2-color); 
-            /* 不用 700 bold，宋体加粗会糊，改用 600 或 normal 配合字号 */
             font-weight: 600; 
             font-size: 1.5em; 
             margin-top: 60px; 
-            margin-bottom: 15px; /* 标题下方留白减小，紧凑感 */
+            margin-bottom: 15px; 
             line-height: 1.3; 
             text-align: center; 
-            letter-spacing: -0.02em; /* 稍微紧一点 */
+            letter-spacing: -0.02em; 
         }
 
-        /* 新增：副标题样式（用于日期、作者等） */
+        /* 🔴 核心调整：副标题字号改为 20px (与正文一致) */
         .subtitle {
-            font-size: 0.9em;
+            font-size: 20px; /* 改为 20px */
             color: var(--subtitle-color);
             text-align: center;
-            margin-bottom: 30px; /* 副标题和正文的距离 */
-            margin-top: -10px;   /* 紧贴主标题 */
-            line-height: 1.6;
-            text-indent: 0 !important; /* 副标题不缩进 */
+            margin-bottom: 30px; 
+            margin-top: -5px;   
+            line-height: 1.8; /* 行高也匹配正文 */
+            font-weight: normal;
+            text-indent: 0 !important; 
         }
 
         p { 
-            margin-bottom: 18px; /* 段间距微调 */
+            margin-bottom: 18px; 
             text-align: justify; 
             text-indent: 2em; 
-            font-size: 20px; /* 保持大字号阅读 */
+            font-size: 20px; 
             font-weight: normal; 
             line-height: 1.8; 
-            /* 🔴 优化：字间距微调，更像印刷品 */
             letter-spacing: 0.01em; 
         }
         
@@ -205,7 +201,6 @@
                     doc.querySelectorAll('style, script, link, meta').forEach(item => item.remove());
 
                     let cleanParas = [];
-                    // DOM 智能扫描
                     let pElements = doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, blockquote, li, div');
                     
                     if (pElements.length > 5) {
@@ -236,7 +231,6 @@
                         
                         let splitTitle = null, splitBody = null;
                         
-                        // 尝试切分 "第X章 标题" 和 "正文"
                         if (hasKeyword && pText.length >= 60) {
                             let splitIdx = pText.indexOf(' ');
                             if (splitIdx > 0 && splitIdx < 30) {
@@ -246,7 +240,6 @@
                             }
                         }
 
-                        // 🔍 智能标题识别区域
                         if (idx < 15 && !hasShownMainTitle) { 
                             if (splitTitle) {
                                 if (titleBuffer !== "") titleBuffer += " ";
@@ -257,22 +250,18 @@
                                 hasShownMainTitle = true; titleBuffer = ""; return; 
                             } 
                             else if (hasKeyword || (titleBuffer !== "" && isShortLine)) {
-                                // 🛑 核心修复：去重逻辑。如果新的一行已经包含在之前的标题里了，就跳过
                                 if (titleBuffer.includes(pText)) return;
-                                
                                 if (titleBuffer !== "") titleBuffer += "\n"; 
                                 titleBuffer += pText;
                                 if (titleIndex === -1) titleIndex = i; return; 
                             }
                         }
 
-                        // 渲染缓存的标题
                         if (titleBuffer !== "") {
                             renderTitle(chapterSection, titleBuffer, titleIndex);
                             titleBuffer = ""; hasShownMainTitle = true;
                         }
 
-                        // 渲染正文
                         let el = document.createElement('p'); el.innerText = pText;
                         if (titleIndex === -1 && !hasShownMainTitle && idx === 0) { 
                             el.setAttribute('data-index', i); 
@@ -308,20 +297,17 @@
             }
         }
 
-        // 🛠️ 新增：专门的标题渲染函数，处理副标题样式
         function renderTitle(container, text, index) {
             let lines = text.split('\n');
-            // 主标题：第一行
             let mainTitle = lines[0];
             let h2 = document.createElement('h2');
             h2.innerText = mainTitle;
             if (index !== -2) h2.setAttribute('data-index', index);
             container.appendChild(h2);
 
-            // 副标题：剩余行（日期、作者等）
             if (lines.length > 1) {
                 for(let i=1; i<lines.length; i++) {
-                    let sub = document.createElement('div'); // 用 div 避免首行缩进
+                    let sub = document.createElement('div'); 
                     sub.className = 'subtitle';
                     sub.innerText = lines[i];
                     container.appendChild(sub);
