@@ -9,22 +9,23 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
         :root {
-            /* 🔴 Apple Books 暖白底色 */
-            --bg: #F8F8F8; 
-            --text: #111; 
-            --h2-color: #000; 
-            --subtitle-color: #666;
-            --border: #e0e0e0; 
+            /* 还原截图中的暖白/米色背景 */
+            --bg: #F9F6F2; 
+            /* 字体颜色为深灰，非纯黑，柔和护眼 */
+            --text: #2c2c2c; 
+            --h2-color: #111; 
+            --subtitle-color: #6a6a6a;
+            --border: #e3e0d8; 
             --toc-bg: #fff;
-            --divider: rgba(0, 0, 0, 0.08);
+            --divider: rgba(0, 0, 0, 0.06);
         }
 
         @media (prefers-color-scheme: dark) {
             :root {
-                --bg: #121212; 
-                --text: #D0D0D0; 
-                --h2-color: #FFF; 
-                --subtitle-color: #888;
+                --bg: #151515; 
+                --text: #b0b0b0; 
+                --h2-color: #fff; 
+                --subtitle-color: #777;
                 --border: #333; 
                 --toc-bg: #1c1c1e;
                 --divider: rgba(255, 255, 255, 0.1);
@@ -32,19 +33,18 @@
         }
 
         body { 
-            /* 🔴 iOS 原生宋体 */
-            font-family: "Songti SC", "STSong", "Hiragino Mincho ProN", serif;
+            /* 🔴 核心切换：使用苹果系统原生黑体 (PingFang SC) */
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Heiti SC", "Microsoft YaHei", sans-serif;
             margin: 0; padding: 0; 
             background-color: var(--bg); 
             color: var(--text); 
             padding-bottom: 90px; padding-top: 60px; 
-            /* 字体锐化 */
+            /* 保持文字清晰度 */
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            font-weight: normal; 
         }
 
-        .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--bg); border-bottom: 0.5px solid var(--border); display: flex; align-items: center; padding: 0 15px; z-index: 100; backdrop-filter: saturate(180%) blur(20px); background: rgba(248, 248, 248, 0.9); }
+        .header { position: fixed; top: 0; left: 0; right: 0; height: 60px; background: var(--bg); border-bottom: 0.5px solid var(--border); display: flex; align-items: center; padding: 0 15px; z-index: 100; backdrop-filter: saturate(180%) blur(20px); background: rgba(249, 246, 242, 0.9); }
         
         .footer { 
             position: fixed; bottom: 0; left: 0; right: 0; height: 80px; 
@@ -54,7 +54,7 @@
             padding-bottom: env(safe-area-inset-bottom);
         }
 
-        #toc-select { width: 100%; height: 40px; font-size: 16px; border: none; border-radius: 8px; background: rgba(0,0,0,0.05); padding-left: 10px; -webkit-appearance: none; color: var(--text); font-family: inherit; font-weight: bold; }
+        #toc-select { width: 100%; height: 40px; font-size: 16px; border: none; border-radius: 8px; background: rgba(0,0,0,0.04); padding-left: 10px; -webkit-appearance: none; color: var(--text); font-family: inherit; font-weight: 600; }
         
         article#viewer { 
             padding: 10px 24px; 
@@ -64,35 +64,37 @@
         
         h2 { 
             color: var(--h2-color); 
-            font-weight: 600; 
-            font-size: 1.5em; 
-            margin-top: 60px; 
-            margin-bottom: 15px; 
-            line-height: 1.3; 
+            /* 黑体标题加粗，更有力量感，符合截图 */
+            font-weight: 700; 
+            font-size: 1.6em; 
+            margin-top: 50px; 
+            margin-bottom: 20px; 
+            line-height: 1.35; 
             text-align: center; 
-            letter-spacing: -0.02em; 
+            letter-spacing: -0.01em; 
         }
 
-        /* 🔴 核心调整：副标题字号改为 20px (与正文一致) */
+        /* 副标题：字号与正文一致，但颜色变浅，居中 */
         .subtitle {
-            font-size: 20px; /* 改为 20px */
+            font-size: 20px; 
             color: var(--subtitle-color);
             text-align: center;
             margin-bottom: 30px; 
-            margin-top: -5px;   
-            line-height: 1.8; /* 行高也匹配正文 */
+            margin-top: -10px;   
+            line-height: 1.7; 
             font-weight: normal;
             text-indent: 0 !important; 
         }
 
         p { 
-            margin-bottom: 18px; 
+            margin-bottom: 22px; 
             text-align: justify; 
             text-indent: 2em; 
             font-size: 20px; 
+            /* 黑体正文不宜过粗，normal 刚刚好 */
             font-weight: normal; 
-            line-height: 1.8; 
-            letter-spacing: 0.01em; 
+            line-height: 1.75; 
+            letter-spacing: 0; /* 黑体通常不需要额外字间距 */
         }
         
         .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), var(--divider), rgba(0, 0, 0, 0)); margin-top: 60px; margin-bottom: 60px; }
@@ -100,8 +102,8 @@
         .highlight-target { animation: flash 2s ease-out; }
         .control-group { display: flex; width: 90%; justify-content: space-between; align-items: center; }
         
-        .nav-btn { width: 48%; height: 42px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; color: white; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-family: -apple-system, sans-serif; }
-        #prev-btn { background-color: #E5E5EA; color: #000; } 
+        .nav-btn { width: 48%; height: 42px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; color: white; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-family: inherit; }
+        #prev-btn { background-color: #dbd8d0; color: #444; } 
         #next-btn { background-color: #007AFF; }
         .upload-container { padding: 40px 20px; text-align: center; margin-top: 40px; }
         #resume-btn { display: none; width: 80%; padding: 15px; margin: 0 auto 20px auto; background: #34C759; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; }
@@ -115,10 +117,10 @@
     </header>
 
     <div class="upload-container" id="upload-area">
-        <h2 style="font-family:-apple-system, sans-serif;">EPUB纯净版阅读器</h2>
+        <h2 style="font-family: inherit;">EPUB纯净版阅读器</h2>
         <button id="resume-btn">🔄 继续阅读</button>
         <div style="margin-top: 20px;">
-            <label for="file-input" style="color: #007AFF; cursor: pointer; font-family:-apple-system, sans-serif; font-size: 18px;">📂 打开书籍</label>
+            <label for="file-input" style="color: #007AFF; cursor: pointer; font-family: inherit; font-size: 18px;">📂 打开书籍</label>
             <input type="file" id="file-input" style="display: none;">
         </div>
     </div>
@@ -126,7 +128,7 @@
     <article id="viewer"></article>
 
     <footer class="footer">
-        <div id="page-info" style="font-size:11px; color:#999; margin-bottom:8px; font-family:-apple-system, sans-serif; font-weight: 500;"></div>
+        <div id="page-info" style="font-size:11px; color:#999; margin-bottom:8px; font-family: inherit; font-weight: 500;"></div>
         <div class="control-group">
             <button id="prev-btn" class="nav-btn" disabled>上一组</button>
             <button id="next-btn" class="nav-btn" disabled>下一组</button>
@@ -201,6 +203,7 @@
                     doc.querySelectorAll('style, script, link, meta').forEach(item => item.remove());
 
                     let cleanParas = [];
+                    // DOM 智能扫描
                     let pElements = doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, blockquote, li, div');
                     
                     if (pElements.length > 5) {
