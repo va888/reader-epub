@@ -16,8 +16,8 @@
             --border: #e3e0d8; 
             --toc-bg: #fff;
             --divider: rgba(0, 0, 0, 0.06);
-            /* 🔵 定义统一的苹果蓝变量 */
-            --btn-blue: #007AFF;
+            /* 🔵 还原源码中的经典蓝 */
+            --btn-blue: #3498db;
         }
 
         @media (prefers-color-scheme: dark) {
@@ -97,18 +97,15 @@
         .highlight-target { animation: flash 2s ease-out; }
         .control-group { display: flex; width: 90%; justify-content: space-between; align-items: center; }
         
-        /* 🔵 核心调整：统一按钮样式 */
+        /* 🔵 按钮样式：使用源码蓝 #3498db */
         .nav-btn { 
             width: 48%; height: 42px; border: none; border-radius: 8px; 
             font-size: 16px; font-weight: 600; 
-            color: white; /* 文字统一为白色 */
+            color: white; 
             cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
             font-family: inherit; 
-            background-color: var(--btn-blue); /* 背景统一为苹果蓝 */
+            background-color: var(--btn-blue); 
         }
-        /* 移除之前单独设置的灰色和蓝色背景 */
-        /* #prev-btn { background-color: #dbd8d0; color: #444; } */
-        /* #next-btn { background-color: #007AFF; } */
 
         .upload-container { padding: 40px 20px; text-align: center; margin-top: 40px; }
         #resume-btn { display: none; width: 80%; padding: 15px; margin: 0 auto 20px auto; background: #34C759; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; }
