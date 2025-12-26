@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>纯净阅读器的终极形态</title>
+    <style>
+        /* 商业级重置 */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #FFFFFF; /* 纯白摄影棚背景 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* 排版核心 */
+        .hero-text {
+            /* 字体栈：优先苹果系统字体，其次微软雅黑 */
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Heiti SC", sans-serif;
+            
+            /* 商业级字重：特粗 */
+            font-weight: 900; 
+            
+            /* 颜色：极致深灰（比纯黑更有质感） */
+            color: #111111;
+            
+            /* 响应式字号：根据屏幕宽度自动调整，保证霸屏 */
+            font-size: 9vw; 
+            
+            /* 现代排版微调 */
+            letter-spacing: -0.03em; /* 稍微缩进，显得紧凑有力 */
+            line-height: 1.1;
+            text-align: center;
+            
+            /* 硬件加速，字体渲染更锐利 */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="hero-text">纯净阅读器的终极形态</h1>
+</body>
+</html>
