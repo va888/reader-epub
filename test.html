@@ -16,10 +16,10 @@
             --border: #e3e0d8; 
             --toc-bg: #fff;
             --divider: rgba(0, 0, 0, 0.06);
-            /* 🔵 源码经典蓝 (Peter River) */
+            /* 🔵 还原源码中的经典蓝 (Peter River) */
             --btn-blue: #3498db;
-            /* 🟢 源码经典绿 (Emerald) - 用于“继续阅读” */
-            --btn-green: #2ecc71;
+            /* 🟢 还原源码中的经典绿 (Nephritis) - 你的老用户习惯的颜色 */
+            --btn-green: #27ae60;
         }
 
         @media (prefers-color-scheme: dark) {
@@ -65,7 +65,7 @@
         h2 { 
             color: var(--h2-color); 
             font-weight: 700; 
-            font-size: 1.8em; /* 保持加大后的字号 */
+            font-size: 1.8em; 
             margin-top: 50px; 
             margin-bottom: 30px; 
             line-height: 1.35; 
@@ -74,7 +74,7 @@
         }
 
         .subtitle {
-            font-size: 22px; /* 保持加大后的字号 */
+            font-size: 22px; 
             color: var(--subtitle-color); 
             text-align: justify;     
             text-indent: 2em;        
@@ -88,7 +88,7 @@
             margin-bottom: 22px; 
             text-align: justify; 
             text-indent: 2em; 
-            font-size: 22px; /* 保持加大后的字号 */
+            font-size: 22px; 
             font-weight: normal; 
             line-height: 1.75; 
             letter-spacing: 0; 
@@ -105,18 +105,18 @@
             color: white; 
             cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
             font-family: inherit; 
-            background-color: var(--btn-blue); 
+            background-color: var(--btn-blue); /* 原始蓝 #3498db */
         }
 
         .upload-container { padding: 40px 20px; text-align: center; margin-top: 40px; }
         
-        /* 🟢 调整：背景色使用经典的 Flat UI Emerald (#2ecc71) */
+        /* 🟢 严格还原：使用你原始代码中的绿色 #27ae60 */
         #resume-btn { 
             display: none; 
             width: 80%; 
             padding: 15px; 
             margin: 0 auto 20px auto; 
-            background: var(--btn-green); /* 使用源码绿 */
+            background: var(--btn-green); 
             color: white; 
             border: none; 
             border-radius: 50px; 
@@ -220,6 +220,7 @@
                     doc.querySelectorAll('style, script, link, meta').forEach(item => item.remove());
 
                     let cleanParas = [];
+                    // DOM 智能扫描
                     let pElements = doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, blockquote, li, div');
                     
                     if (pElements.length > 5) {
