@@ -11,9 +11,10 @@
         :root {
             /* 还原截图中的暖白/米色背景 */
             --bg: #F9F6F2; 
-            /* 字体颜色为深灰，非纯黑，柔和护眼 */
+            /* 字体颜色为深灰 */
             --text: #2c2c2c; 
             --h2-color: #111; 
+            /* 🔴 副标题灰色，用于区分 */
             --subtitle-color: #6a6a6a;
             --border: #e3e0d8; 
             --toc-bg: #fff;
@@ -33,13 +34,12 @@
         }
 
         body { 
-            /* 🔴 核心切换：使用苹果系统原生黑体 (PingFang SC) */
+            /* 苹果系统原生黑体 (PingFang SC) */
             font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Heiti SC", "Microsoft YaHei", sans-serif;
             margin: 0; padding: 0; 
             background-color: var(--bg); 
             color: var(--text); 
             padding-bottom: 90px; padding-top: 60px; 
-            /* 保持文字清晰度 */
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
@@ -64,26 +64,25 @@
         
         h2 { 
             color: var(--h2-color); 
-            /* 黑体标题加粗，更有力量感，符合截图 */
             font-weight: 700; 
             font-size: 1.6em; 
             margin-top: 50px; 
-            margin-bottom: 20px; 
+            margin-bottom: 30px; 
             line-height: 1.35; 
             text-align: center; 
             letter-spacing: -0.01em; 
         }
 
-        /* 副标题：字号与正文一致，但颜色变浅，居中 */
+        /* 🔴 核心调整：样式同正文，但颜色变灰 */
         .subtitle {
             font-size: 20px; 
-            color: var(--subtitle-color);
-            text-align: center;
-            margin-bottom: 30px; 
-            margin-top: -10px;   
-            line-height: 1.7; 
+            color: var(--subtitle-color); /* 变为灰色 */
+            text-align: justify;     /* 保持两端对齐 */
+            text-indent: 2em;        /* 保持首行缩进 */
+            margin-bottom: 22px;     
+            line-height: 1.75;       
             font-weight: normal;
-            text-indent: 0 !important; 
+            display: block;
         }
 
         p { 
@@ -91,10 +90,9 @@
             text-align: justify; 
             text-indent: 2em; 
             font-size: 20px; 
-            /* 黑体正文不宜过粗，normal 刚刚好 */
             font-weight: normal; 
             line-height: 1.75; 
-            letter-spacing: 0; /* 黑体通常不需要额外字间距 */
+            letter-spacing: 0; 
         }
         
         .chapter-divider { border: 0; height: 1px; background-image: linear-gradient(to right, rgba(0, 0, 0, 0), var(--divider), rgba(0, 0, 0, 0)); margin-top: 60px; margin-bottom: 60px; }
@@ -311,7 +309,7 @@
             if (lines.length > 1) {
                 for(let i=1; i<lines.length; i++) {
                     let sub = document.createElement('div'); 
-                    sub.className = 'subtitle';
+                    sub.className = 'subtitle'; 
                     sub.innerText = lines[i];
                     container.appendChild(sub);
                 }
