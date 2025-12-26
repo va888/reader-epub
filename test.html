@@ -9,16 +9,15 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <style>
         :root {
-            /* 还原截图中的暖白/米色背景 */
             --bg: #F9F6F2; 
-            /* 字体颜色为深灰 */
             --text: #2c2c2c; 
             --h2-color: #111; 
-            /* 🔴 副标题灰色，用于区分 */
             --subtitle-color: #6a6a6a;
             --border: #e3e0d8; 
             --toc-bg: #fff;
             --divider: rgba(0, 0, 0, 0.06);
+            /* 🔵 定义统一的苹果蓝变量 */
+            --btn-blue: #007AFF;
         }
 
         @media (prefers-color-scheme: dark) {
@@ -34,7 +33,6 @@
         }
 
         body { 
-            /* 苹果系统原生黑体 (PingFang SC) */
             font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Heiti SC", "Microsoft YaHei", sans-serif;
             margin: 0; padding: 0; 
             background-color: var(--bg); 
@@ -73,12 +71,11 @@
             letter-spacing: -0.01em; 
         }
 
-        /* 🔴 核心调整：样式同正文，但颜色变灰 */
         .subtitle {
             font-size: 20px; 
-            color: var(--subtitle-color); /* 变为灰色 */
-            text-align: justify;     /* 保持两端对齐 */
-            text-indent: 2em;        /* 保持首行缩进 */
+            color: var(--subtitle-color); 
+            text-align: justify;     
+            text-indent: 2em;        
             margin-bottom: 22px;     
             line-height: 1.75;       
             font-weight: normal;
@@ -100,9 +97,19 @@
         .highlight-target { animation: flash 2s ease-out; }
         .control-group { display: flex; width: 90%; justify-content: space-between; align-items: center; }
         
-        .nav-btn { width: 48%; height: 42px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; color: white; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-family: inherit; }
-        #prev-btn { background-color: #dbd8d0; color: #444; } 
-        #next-btn { background-color: #007AFF; }
+        /* 🔵 核心调整：统一按钮样式 */
+        .nav-btn { 
+            width: 48%; height: 42px; border: none; border-radius: 8px; 
+            font-size: 16px; font-weight: 600; 
+            color: white; /* 文字统一为白色 */
+            cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+            font-family: inherit; 
+            background-color: var(--btn-blue); /* 背景统一为苹果蓝 */
+        }
+        /* 移除之前单独设置的灰色和蓝色背景 */
+        /* #prev-btn { background-color: #dbd8d0; color: #444; } */
+        /* #next-btn { background-color: #007AFF; } */
+
         .upload-container { padding: 40px 20px; text-align: center; margin-top: 40px; }
         #resume-btn { display: none; width: 80%; padding: 15px; margin: 0 auto 20px auto; background: #34C759; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; }
         #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.6); color: white; padding: 20px; border-radius: 12px; display: none; z-index: 200; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); font-weight: bold;}
@@ -118,7 +125,7 @@
         <h2 style="font-family: inherit;">EPUB纯净版阅读器</h2>
         <button id="resume-btn">🔄 继续阅读</button>
         <div style="margin-top: 20px;">
-            <label for="file-input" style="color: #007AFF; cursor: pointer; font-family: inherit; font-size: 18px;">📂 打开书籍</label>
+            <label for="file-input" style="color: var(--btn-blue); cursor: pointer; font-family: inherit; font-size: 18px;">📂 打开书籍</label>
             <input type="file" id="file-input" style="display: none;">
         </div>
     </div>
