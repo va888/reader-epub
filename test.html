@@ -16,8 +16,10 @@
             --border: #e3e0d8; 
             --toc-bg: #fff;
             --divider: rgba(0, 0, 0, 0.06);
-            /* 🔵 源码经典蓝 */
+            /* 🔵 源码经典蓝 (Peter River) */
             --btn-blue: #3498db;
+            /* 🟢 源码经典绿 (Emerald) - 用于“继续阅读” */
+            --btn-green: #2ecc71;
         }
 
         @media (prefers-color-scheme: dark) {
@@ -63,8 +65,7 @@
         h2 { 
             color: var(--h2-color); 
             font-weight: 700; 
-            /* ⬆️ 加大：1.6em -> 1.8em */
-            font-size: 1.8em; 
+            font-size: 1.8em; /* 保持加大后的字号 */
             margin-top: 50px; 
             margin-bottom: 30px; 
             line-height: 1.35; 
@@ -73,8 +74,7 @@
         }
 
         .subtitle {
-            /* ⬆️ 加大：20px -> 22px */
-            font-size: 22px; 
+            font-size: 22px; /* 保持加大后的字号 */
             color: var(--subtitle-color); 
             text-align: justify;     
             text-indent: 2em;        
@@ -88,8 +88,7 @@
             margin-bottom: 22px; 
             text-align: justify; 
             text-indent: 2em; 
-            /* ⬆️ 加大：20px -> 22px */
-            font-size: 22px; 
+            font-size: 22px; /* 保持加大后的字号 */
             font-weight: normal; 
             line-height: 1.75; 
             letter-spacing: 0; 
@@ -110,7 +109,21 @@
         }
 
         .upload-container { padding: 40px 20px; text-align: center; margin-top: 40px; }
-        #resume-btn { display: none; width: 80%; padding: 15px; margin: 0 auto 20px auto; background: #34C759; color: white; border: none; border-radius: 50px; font-size: 18px; font-weight: bold; }
+        
+        /* 🟢 调整：背景色使用经典的 Flat UI Emerald (#2ecc71) */
+        #resume-btn { 
+            display: none; 
+            width: 80%; 
+            padding: 15px; 
+            margin: 0 auto 20px auto; 
+            background: var(--btn-green); /* 使用源码绿 */
+            color: white; 
+            border: none; 
+            border-radius: 50px; 
+            font-size: 18px; 
+            font-weight: bold; 
+        }
+        
         #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.6); color: white; padding: 20px; border-radius: 12px; display: none; z-index: 200; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); font-weight: bold;}
     </style>
 </head>
@@ -207,7 +220,6 @@
                     doc.querySelectorAll('style, script, link, meta').forEach(item => item.remove());
 
                     let cleanParas = [];
-                    // DOM 智能扫描
                     let pElements = doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6, blockquote, li, div');
                     
                     if (pElements.length > 5) {
